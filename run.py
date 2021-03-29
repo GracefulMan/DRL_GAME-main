@@ -6,8 +6,8 @@ import numpy as np
 import numpy.random as rd
 
 from copy import deepcopy
-from elegantrl.agent import ReplayBuffer, ReplayBufferMP
-from elegantrl.env import PreprocessEnv
+from agent import ReplayBuffer, ReplayBufferMP
+from env import PreprocessEnv
 
 gym.logger.set_level(40)  # Block warning: 'WARN: Box bound precision lowered by casting to float32'
 # mac
@@ -104,7 +104,7 @@ def demo1_discrete_action_space():
     args = Arguments(agent=None, env=None, gpu_id=None)  # see Arguments() to see hyper-parameters
 
     '''choose an DRL algorithm'''
-    from elegantrl.agent import AgentD3QN  # AgentDQN,AgentDuelDQN, AgentDoubleDQN,
+    from agent import AgentD3QN  # AgentDQN,AgentDuelDQN, AgentDoubleDQN,
     args.agent = AgentD3QN()
 
     '''choose environment'''
@@ -127,7 +127,7 @@ def demo2_continuous_action_space_off_policy():
     args = Arguments(if_on_policy=False)
 
     '''choose an DRL algorithm'''
-    from elegantrl.agent import AgentModSAC  # AgentSAC, AgentTD3, AgentDDPG
+    from agent import AgentModSAC  # AgentSAC, AgentTD3, AgentDDPG
     args.agent = AgentModSAC()  # AgentSAC(), AgentTD3(), AgentDDPG()
 
     '''choose environment'''
@@ -161,7 +161,7 @@ def demo2_continuous_action_space_on_policy():
     args = Arguments(if_on_policy=True)  # hyper-parameters of on-policy is different from off-policy
 
     '''choose an DRL algorithm'''
-    from elegantrl.agent import AgentPPO
+    from agent import AgentPPO
     args.agent = AgentPPO()
     args.agent.if_use_gae = True
 
@@ -186,7 +186,7 @@ def demo2_continuous_action_space_on_policy():
 
 
 def demo3_custom_env_fin_rl():
-    from elegantrl.agent import AgentPPO
+    from agent import AgentPPO
 
     '''choose an DRL algorithm'''
     args = Arguments(if_on_policy=True)
@@ -219,7 +219,7 @@ def demo4_bullet_mujoco_off_policy():
     args = Arguments(if_on_policy=False)
     args.random_seed = 0
 
-    from elegantrl.agent import AgentModSAC  # AgentSAC, AgentTD3, AgentDDPG
+    from agent import AgentModSAC  # AgentSAC, AgentTD3, AgentDDPG
     from env import fix_car_racing_env
     args.agent = AgentModSAC()  # AgentSAC(), AgentTD3(), AgentDDPG()
     args.agent.if_use_dn = True
@@ -250,7 +250,7 @@ def demo4_bullet_mujoco_off_policy():
 def demo4_bullet_mujoco_on_policy():
     args = Arguments(if_on_policy=True)  # hyper-parameters of on-policy is different from off-policy
 
-    from elegantrl.agent import AgentPPO
+    from agent import AgentPPO
     args.agent = AgentPPO()
     args.agent.if_use_gae = True
 
