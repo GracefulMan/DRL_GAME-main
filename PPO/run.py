@@ -100,6 +100,63 @@ class Arguments:
         np.random.seed(self.random_seed)
 
 
+def demo1_discrete_action_space():
+    args = Arguments(agent=None, env=None, gpu_id=None)  # see Arguments() to see hyper-parameters
+
+    '''choose an DRL algorithm'''
+    from agent import AgentD3QN  # AgentDQN,AgentDuelDQN, AgentDoubleDQN,
+    args.agent = AgentD3QN()
+
+    '''choose environment'''
+    # args.env = PreprocessEnv(env=gym.make('CartPole-v0'))
+    # args.net_dim = 2 ** 7  # change a default hyper-parameters
+    # args.batch_size = 2 ** 7
+    "TotalStep: 2e3, TargetReward: , UsedTime: 10s"
+    args.env = PreprocessEnv(env=gym.make('LunarLander-v2'))
+    args.net_dim = 2 ** 8
+    args.batch_size = 2 ** 8
+    "TotalStep: 6e4, TargetReward: 200, UsedTime: 600s"
+
+    '''train and evaluate'''
+    train_and_evaluate(args)
+    # args.rollout_num = 4
+    # train_and_evaluate__multiprocessing(args)
+
+
+def demo2_continuous_action_space_off_policy():
+    args = Arguments(if_on_policy=False)
+
+    '''choose an DRL algorithm'''
+    from agent import AgentModSAC  # AgentSAC, AgentTD3, AgentDDPG
+    args.agent = AgentModSAC()  # AgentSAC(), AgentTD3(), AgentDDPG()
+
+    '''choose environment'''
+    env = gym.make('Pendulum-v0')
+    env.target_reward = -200  # set target_reward manually for env 'Pendulum-v0'
+    args.env = PreprocessEnv(env=env)
+    print(args.env.observation_space.shape)
+    args.reward_scale = 2 ** -3  # RewardRange: -1800 < -200 < -50 < 0
+    # args.eval_times2 = 2 ** 4  # set a large eval_times to get a precise learning curve
+    "TD3    TotalStep: 3e4, TargetReward: -200, UsedTime: 300s"
+    "ModSAC TotalStep: 4e4, TargetReward: -200, UsedTime: 400s"
+    # args.env = PreprocessEnv(env=gym.make('LunarLanderContinuous-v2'))
+    # args.reward_scale = 2 ** 0  # RewardRange: -800 < -200 < 200 < 302
+    "TD3    TotalStep:  9e4, TargetReward: 100, UsedTime: 3ks"
+    "TD3    TotalStep: 20e4, TargetReward: 200, UsedTime: 5ks"
+    "SAC    TotalStep:  9e4, TargetReward: 200, UsedTime: 3ks"
+    "ModSAC TotalStep:  5e4, TargetReward: 200, UsedTime: 1ks"
+    # args.env = PreprocessEnv(env=gym.make('BipedalWalker-v3'))
+    # args.reward_scale = 2 ** 0  # RewardRange: -200 < -150 < 300 < 334
+    # args.net_dim = 2 ** 8
+    # args.break_step = int(2e5)
+    # args.if_allow_break = False
+    "TotalStep: 2e5, TargetReward: 300, UsedTime: 5000s"
+
+    '''train and evaluate'''
+    # train_and_evaluate(args)
+    args.rollout_num = 4
+    train_and_evaluate_mp(args)
+
 
 def demo2_continuous_action_space_on_policy():
     args = Arguments(if_on_policy=True)  # hyper-parameters of on-policy is different from off-policy
@@ -115,9 +172,7 @@ def demo2_continuous_action_space_on_policy():
     # args.env = PreprocessEnv(env=env)
     # args.reward_scale = 2 ** -3  # RewardRange: -1800 < -200 < -50 < 0
     "TotalStep: 4e5, TargetReward: -200, UsedTime: 400s"
-    import pybullet_envs  # for python-bullet-gym
-    dir(pybullet_envs)
-    args.env = PreprocessEnv(env=gym.make("MountainCarContinuous-v0"))
+    args.env = PreprocessEnv(env=gym.make('LunarLanderContinuous-v2'))
     args.reward_scale = 2 ** 0  # RewardRange: -800 < -200 < 200 < 302
     "TotalStep: 8e5, TargetReward: 200, UsedTime: 1500s"
     # args.env = PreprocessEnv(env=gym.make('BipedalWalker-v3'))
@@ -131,9 +186,96 @@ def demo2_continuous_action_space_on_policy():
     train_and_evaluate_mp(args)
 
 
+def demo3_custom_env_fin_rl():
+    from agent import AgentPPO
+
+    '''choose an DRL algorithm'''
+    args = Arguments(if_on_policy=True)
+    args.agent = AgentPPO()
+    args.agent.if_use_gae = False
+
+    from elegantrl.env import FinanceStockEnv  # a standard env for ElegantRL, not need PreprocessEnv()
+    args.env = FinanceStockEnv(if_train=True, train_beg=0, train_len=1024)
+    args.env_eval = FinanceStockEnv(if_train=False, train_beg=0, train_len=1024)  # eva_len = 1699 - train_len
+    args.reward_scale = 2 ** 0  # RewardRange: 0 < 1.0 < 1.25 <
+    args.break_step = int(5e6)
+    args.net_dim = 2 ** 8
+    args.max_step = args.env.max_step
+    args.max_memo = (args.max_step - 1) * 8
+    args.batch_size = 2 ** 11
+    args.repeat_times = 2 ** 4
+    args.eval_times1 = 2 ** 2
+    args.eval_times2 = 2 ** 4
+    args.if_allow_break = True
+    "TotalStep:  5e4, TargetReward: 1.25, UsedTime:  20s"
+    "TotalStep: 20e4, TargetReward: 1.50, UsedTime:  80s"
+
+    '''train and evaluate'''
+    # train_and_evaluate(args)
+    args.rollout_num = 8
+    train_and_evaluate_mp(args)
 
 
+def demo4_bullet_mujoco_off_policy():
+    args = Arguments(if_on_policy=False)
+    args.random_seed = 0
 
+    from agent import AgentModSAC  # AgentSAC, AgentTD3, AgentDDPG
+    from env import fix_car_racing_env
+    args.agent = AgentModSAC()  # AgentSAC(), AgentTD3(), AgentDDPG()
+    args.agent.if_use_dn = True
+    args.net_dim = 2 ** 7  # default is 2 ** 8 is too large for if_use_dn = True
+
+    import pybullet_envs  # for python-bullet-gym
+    dir(pybullet_envs)
+    env = gym.make('AntBulletEnv-v0')
+    env = fix_car_racing_env(env)
+    args.env = PreprocessEnv(env=env)
+    args.env.max_step = 2 ** 12  # important, default env.max_step=1800?
+
+    args.break_step = int(1e6 * 8)  # (5e5) 1e6, UsedTime: (15,000s) 30,000s
+    args.reward_scale = 2 ** -2  # RewardRange: -50 < 0 < 2500 < 3340
+    args.max_memo = 2 ** 20
+    args.batch_size = 2 ** 9
+    args.show_gap = 2 ** 8  # for Recorder
+    args.eva_size1 = 2 ** 1  # for Recorder
+    args.eva_size2 = 2 ** 3  # for Recorder
+    "TotalStep: 3e5, TargetReward: 1500, UsedTime:  8ks"
+    "TotalStep: 6e5, TargetReward: 2500, UsedTime: 20ks"
+
+    # train_and_evaluate(args)
+    args.rollout_num = 8
+    train_and_evaluate_mp(args)
+
+
+def demo4_bullet_mujoco_on_policy():
+    args = Arguments(if_on_policy=True)  # hyper-parameters of on-policy is different from off-policy
+
+    from agent import AgentPPO
+    args.agent = AgentPPO()
+    args.agent.if_use_gae = True
+
+    import pybullet_envs  # for python-bullet-gym
+    dir(pybullet_envs)
+    args.env = PreprocessEnv(env=gym.make('AntBulletEnv-v0'))
+    args.env.max_step = 2 ** 10
+
+    args.break_step = int(2e6 * 8)  # (5e5) 1e6, UsedTime: (15,000s) 30,000s
+    args.reward_scale = 2 ** -2  # (-50) 0 ~ 2500 (3340)
+    args.max_memo = 2 ** 11
+    args.repeat_times = 2 ** 3
+    args.batch_size = 2 ** 10
+    args.net_dim = 2 ** 9
+    args.show_gap = 2 ** 8  # for Recorder
+    args.eva_size1 = 2 ** 1  # for Recorder
+    args.eva_size2 = 2 ** 3  # for Recorder
+    "TotalStep:  2e6, TargetReward: 1500, UsedTime:  3ks"
+    "TotalStep: 13e6, TargetReward: 2400, UsedTime: 21ks"
+
+    '''train and evaluate'''
+    # train_and_evaluate(args)
+    args.rollout_num = 4
+    train_and_evaluate_mp(args)
 
 
 '''single process training'''
@@ -643,6 +785,68 @@ def explore_before_training(env, buffer, target_step, reward_scale, gamma) -> in
     return steps
 
 
-if __name__ == '__main__':
-    demo2_continuous_action_space_on_policy()
+def contra_game():
+    args = Arguments(if_on_policy=True)
+    args.random_seed = 0
 
+    from agent import AgentPPO  # AgentSAC, AgentTD3, AgentDDPG
+    from nes_py.wrappers import JoypadSpace
+    from Contra.actions import SIMPLE_MOVEMENT, COMPLEX_MOVEMENT, RIGHT_ONLY
+    args.agent = AgentPPO()  # AgentSAC(), AgentTD3(), AgentDDPG()
+    args.agent.if_use_dn = True
+    args.net_dim = 2 ** 7  # default is 2 ** 8 is too large for if_use_dn = True
+    env = gym.make('Contra-v0')
+    env = JoypadSpace(env, SIMPLE_MOVEMENT)
+
+    def fix_visual_game(env: gym.Wrapper) -> gym.Wrapper:
+        w, h, channels = env.observation_space.shape
+        setattr(env,'env_name', env.unwrapped.spec.id)
+        setattr(env, 'state_num', (channels, w, h))
+        setattr(env, 'state_dim', 3)
+        setattr(env, 'action_dim', env.action_space.n)
+        setattr(env, 'if_discrete', isinstance(env.action_space, gym.spaces.Discrete))
+        target_reward = getattr(env, 'target_reward', None)
+        target_reward_default = getattr(env.spec, 'reward_threshold', None)
+        if target_reward is None:
+            target_reward = target_reward_default
+        if target_reward is None:
+            target_reward = 2 ** 16
+        setattr(env, 'target_reward', target_reward)
+
+        def convert_image_shape(img: np.ndarray) ->  np.ndarray:
+            (w, h, channels) = img.shape
+            return img.reshape((channels, w, h))
+
+        def fix_step(env_step):
+            def step(action):
+                observation, reward, terminal, info = env_step(action)
+                print(type(observation))
+                return convert_image_shape(observation), reward, terminal, info
+            return step
+        env.step = fix_step(env.step)
+        return env
+    args.env = fix_visual_game(env)
+    args.env.max_step = 4096  # important, default env.max_step=1800?
+
+    args.break_step = int(1e6 * 8)  # (5e5) 1e6, UsedTime: (15,000s) 30,000s
+    args.reward_scale = 2 ** -2  # RewardRange: -50 < 0 < 2500 < 3340
+    args.max_memo = 2 ** 20
+    args.batch_size = 2 ** 9
+    args.show_gap = 2 ** 8  # for Recorder
+    args.eva_size1 = 2 ** 1  # for Recorder
+    args.eva_size2 = 2 ** 3  # for Recorder
+    "TotalStep: 3e5, TargetReward: 1500, UsedTime:  8ks"
+    "TotalStep: 6e5, TargetReward: 2500, UsedTime: 20ks"
+
+    # train_and_evaluate(args)
+    args.rollout_num = 8
+    train_and_evaluate_mp(args)
+
+if __name__ == '__main__':
+    contra_game()
+    #demo1_discrete_action_space()
+    #demo2_continuous_action_space_off_policy()
+    # demo2_continuous_action_space_on_policy()
+    # demo3_custom_env_fin_rl()
+    #demo4_bullet_mujoco_off_policy()
+    demo4_bullet_mujoco_on_policy()
