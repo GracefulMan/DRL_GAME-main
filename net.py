@@ -77,19 +77,23 @@ class ActorPPOWithRNN(nn.Module):
 
         layer_norm(self.net[-1], std=0.1)  # output layer for action
 
-    def forward(self, state):
-        return self.net(state).tanh()  # action
+    def forward(self, state, hidden_state):
+        out = self.net(state)
+        out, hidden_state = self.rnn(out,  hidden_state)
+        return out, hidden_state  # action
 
-    def get_action_noise(self, state):
-        a_avg = self.net(state)
+    def get_action_noise(self, state, hidden_state):
+        out = self.net(state)
+        a_avg, hidden_state = self.rnn(out, hidden_state)
         a_std = self.a_std_log.exp()
 
         noise = torch.randn_like(a_avg)
         action = a_avg + noise * a_std
         return action, noise
 
-    def compute_logprob(self, state, action):
-        a_avg = self.net(state)
+    def compute_logprob(self, state, action, hidden_state):
+        out = self.net(state)
+        a_avg, hidden_state = self.rnn(out, hidden_state)
         a_std = self.a_std_log.exp()
         delta = ((a_avg - action) / a_std).pow(2).__mul__(0.5)  # __mul__(0.5) is * 0.5
         logprob = -(self.a_std_log + self.sqrt_2pi_log + delta)
