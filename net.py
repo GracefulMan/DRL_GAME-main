@@ -56,7 +56,7 @@ class ActorPPOWithRNN(nn.Module):
                                      nn.Linear(mid_dim, mid_dim), nn.ReLU(),
                                      nn.Linear(mid_dim, mid_dim), nn.Hardswish(),
                                      nn.Linear(mid_dim, mid_dim))
-            self.rnn = nn.RNN(input_size=mid_dim, hidden_size=mid_dim)
+            self.rnn = nn.RNN(input_size=mid_dim, hidden_size=mid_dim) # (seq, batch, feature)
         else:
             def set_dim(i):
                 return int(12 * 1.5 ** i)
