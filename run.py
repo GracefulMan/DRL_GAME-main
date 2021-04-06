@@ -117,7 +117,7 @@ def demo2_continuous_action_space_on_policy():
     "TotalStep: 4e5, TargetReward: -200, UsedTime: 400s"
     import pybullet_envs  # for python-bullet-gym
     dir(pybullet_envs)
-    args.env = PreprocessEnv(env=gym.make("Pendulum-v0"))
+    args.env = PreprocessEnv( env=gym.make("Pendulum-v0"))
     args.reward_scale = 2 ** 0  # RewardRange: -800 < -200 < 200 < 302
     "TotalStep: 8e5, TargetReward: 200, UsedTime: 1500s"
     # args.env = PreprocessEnv(env=gym.make('BipedalWalker-v3'))
