@@ -18,7 +18,7 @@ os.environ["KMP_DUPLICATE_LIB_OK"]="TRUE"
 
 """Plan to
 Arguments(), let Arguments ask AgentXXX to get if_on_policy
-Mega PPO and GaePPO into AgentPPO(..., if_gae)
+Mega Source and GaePPO into AgentPPO(..., if_gae)
 """
 
 '''DEMO'''

@@ -305,7 +305,9 @@ class AgentDDPG(AgentBase):
     def select_action(self, state) -> np.ndarray:
         states = torch.as_tensor((state,), dtype=torch.float32, device=self.device).detach_()
         action = self.act(states)[0].cpu().numpy()
-        return (action + self.ou_noise()).ratio_clip(-1, 1)
+        #return (action + self.ou_noise()).ratio_clip(-1, 1)
+        return (action + self.ou_noise()).clip(-1, 1)
+
 
     def update_net(self, buffer, target_step, batch_size, repeat_times) -> (float, float):
         buffer.update_now_len_before_sample()
@@ -751,7 +753,7 @@ class AgentPPO(AgentBase):
                                            {'params': self.cri.parameters(), 'lr': self.learning_rate}])
 
     def select_action(self, state) -> tuple:
-        """select action for PPO
+        """select action for Source
 
         :array state: state.shape==(state_dim, )
 
@@ -797,7 +799,7 @@ class AgentPPO(AgentBase):
             buf_r_sum, buf_advantage = self.compute_reward(buf_len, buf_reward, buf_mask, buf_value)
             del buf_reward, buf_mask, buf_noise
 
-        '''PPO: Surrogate objective of Trust Region'''
+        '''Source: Surrogate objective of Trust Region'''
         obj_critic = None
         for _ in range(int(repeat_times * buf_len / batch_size)):
             indices = torch.randint(buf_len, size=(batch_size,), requires_grad=False, device=self.device)
@@ -920,7 +922,7 @@ class AgentInterPPO(AgentPPO):
             buf_advantage = (buf_advantage - buf_advantage.mean()) / (buf_advantage.std() + 1e-5)
             del buf_reward, buf_mask, buf_noise
 
-        '''PPO: Clipped Surrogate objective of Trust Region'''
+        '''Source: Clipped Surrogate objective of Trust Region'''
         for _ in range(int(repeat_times * buf_len / batch_size)):
             indices = torch.randint(buf_len, size=(batch_size,), device=self.device)
 
