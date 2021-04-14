@@ -6,7 +6,7 @@ import numpy as np
 import numpy.random as rd
 
 from copy import deepcopy
-from agent import ReplayBuffer, ReplayBufferMP
+from agent import ReplayBuffer, ReplayBufferMP, ReplayBufferRNN, ReplayBufferMPRNN
 from env import PreprocessEnv
 
 gym.logger.set_level(40)  # Block warning: 'WARN: Box bound precision lowered by casting to float32'
@@ -134,7 +134,6 @@ def demo2_continuous_action_space_off_policy():
     env = gym.make('Pendulum-v0')
     env.target_reward = -200  # set target_reward manually for env 'Pendulum-v0'
     args.env = PreprocessEnv(env=env)
-    print(args.env.observation_space.shape)
     args.reward_scale = 2 ** -3  # RewardRange: -1800 < -200 < -50 < 0
     # args.eval_times2 = 2 ** 4  # set a large eval_times to get a precise learning curve
     "TD3    TotalStep: 3e4, TargetReward: -200, UsedTime: 300s"
@@ -156,6 +155,39 @@ def demo2_continuous_action_space_off_policy():
     # train_and_evaluate(args)
     args.rollout_num = 4
     train_and_evaluate_mp(args)
+
+def demo2_continuous_action_space_off_policyRNN():
+    args = Arguments(if_on_policy=False)
+
+    '''choose an DRL algorithm'''
+    from agent import AgentDDPGWithRNN  # AgentSAC, AgentTD3, AgentDDPG
+    args.agent = AgentDDPGWithRNN()  # AgentSAC(), AgentTD3(), AgentDDPG()
+
+    '''choose environment'''
+    env = gym.make('Pendulum-v0')
+    env.target_reward = -200  # set target_reward manually for env 'Pendulum-v0'
+    args.env = PreprocessEnv(env=env)
+    args.reward_scale = 2 ** -3  # RewardRange: -1800 < -200 < -50 < 0
+    # args.eval_times2 = 2 ** 4  # set a large eval_times to get a precise learning curve
+    "TD3    TotalStep: 3e4, TargetReward: -200, UsedTime: 300s"
+    "ModSAC TotalStep: 4e4, TargetReward: -200, UsedTime: 400s"
+    # args.env = PreprocessEnv(env=gym.make('LunarLanderContinuous-v2'))
+    # args.reward_scale = 2 ** 0  # RewardRange: -800 < -200 < 200 < 302
+    "TD3    TotalStep:  9e4, TargetReward: 100, UsedTime: 3ks"
+    "TD3    TotalStep: 20e4, TargetReward: 200, UsedTime: 5ks"
+    "SAC    TotalStep:  9e4, TargetReward: 200, UsedTime: 3ks"
+    "ModSAC TotalStep:  5e4, TargetReward: 200, UsedTime: 1ks"
+    # args.env = PreprocessEnv(env=gym.make('BipedalWalker-v3'))
+    # args.reward_scale = 2 ** 0  # RewardRange: -200 < -150 < 300 < 334
+    # args.net_dim = 2 ** 8
+    # args.break_step = int(2e5)
+    # args.if_allow_break = False
+    "TotalStep: 2e5, TargetReward: 300, UsedTime: 5000s"
+
+    '''train and evaluate'''
+    # train_and_evaluate(args)
+    args.rollout_num = 4
+    train_and_evaluate_mpRNN(args)
 
 
 def demo2_continuous_action_space_on_policy():
@@ -393,6 +425,41 @@ def train_and_evaluate_mp(args):
     # print("[W CudaIPCTypes.cpp:22]← Don't worry about this warning.")
     [p.terminate() for p in process]
 
+def train_and_evaluate_mpRNN(args):
+    act_workers = args.rollout_num
+    os.environ['PYTHONWARNINGS'] = 'ignore:semaphore_tracker:UserWarning'
+    '''Python.multiprocessing + PyTorch + CUDA --> semaphore_tracker:UserWarning
+    https://discuss.pytorch.org/t/issue-with-multiprocessing-semaphore-tracking/22943/4
+    '''
+    print("| multiprocessing, act_workers:", act_workers)
+
+    import multiprocessing as mp  # Python built-in multiprocessing library
+    # mp.set_start_method('spawn', force=True)  # force=True to solve "RuntimeError: context has already been set"
+    # mp.set_start_method('fork', force=True)  # force=True to solve "RuntimeError: context has already been set"
+    # mp.set_start_method('forkserver', force=True)  # force=True to solve "RuntimeError: context has already been set"
+
+    pipe1_eva, pipe2_eva = mp.Pipe()  # Pipe() for Process mp_evaluate_agent()
+    pipe2_exp_list = list()  # Pipe() for Process mp_explore_in_env()
+
+    process_train = mp.Process(target=mp_trainRNN, args=(args, pipe2_eva, pipe2_exp_list))
+    process_evaluate = mp.Process(target=mp_evaluateRNN, args=(args, pipe1_eva))
+    process = [process_train, process_evaluate]
+
+    for worker_id in range(act_workers):
+        exp_pipe1, exp_pipe2 = mp.Pipe(duplex=True)
+        pipe2_exp_list.append(exp_pipe1)
+        process.append(mp.Process(target=mp_exploreRNN, args=(args, exp_pipe2, worker_id)))
+
+    print("| multiprocessing, None:")
+    [p.start() for p in process]
+    process_evaluate.join()
+    process_train.join()
+    import warnings
+    warnings.simplefilter('ignore', UserWarning)
+    # semaphore_tracker: There appear to be 1 leaked semaphores to clean up at shutdown
+    # print("[W CudaIPCTypes.cpp:22]← Don't worry about this warning.")
+    [p.terminate() for p in process]
+
 
 def mp_train(args, pipe1_eva, pipe1_exp_list):
     args.init_before_training(if_main=False)
@@ -498,6 +565,112 @@ def mp_train(args, pipe1_eva, pipe1_exp_list):
     # q_i_eva_get = pipe2_eva.recv()
     time.sleep(4)
 
+def mp_trainRNN(args, pipe1_eva, pipe1_exp_list):
+    args.init_before_training(if_main=False)
+
+    '''basic arguments'''
+    env = args.env
+    cwd = args.cwd
+    agent = args.agent
+    rollout_num = args.rollout_num
+
+    '''training arguments'''
+    net_dim = args.net_dim
+    max_memo = args.max_memo
+    break_step = args.break_step
+    batch_size = args.batch_size
+    target_step = args.target_step
+    repeat_times = args.repeat_times
+    if_break_early = args.if_allow_break
+    del args  # In order to show these hyper-parameters clearly, I put them above.
+
+    '''init: environment'''
+    max_step = env.max_step
+    state_dim = env.state_dim
+    action_dim = env.action_dim
+    if_discrete = env.if_discrete
+
+    '''init: Agent, ReplayBuffer'''
+    agent.init(net_dim, state_dim, action_dim)
+    if_on_policy = getattr(agent, 'if_on_policy', False)
+
+    '''send'''
+    pipe1_eva.send(agent.act)  # send
+    # act = pipe2_eva.recv()  # recv
+
+    buffer_mp = ReplayBufferMPRNN(max_len=max_memo + max_step * rollout_num, if_on_policy=if_on_policy,
+                               state_dim=state_dim, action_dim=1 if if_discrete else action_dim,
+                               rollout_num=rollout_num, if_gpu=True, hidden_dim=net_dim)
+
+    '''prepare for training'''
+    if if_on_policy:
+        steps = 0
+    else:  # explore_before_training for off-policy
+        with torch.no_grad():  # update replay buffer
+            steps = 0
+            for i in range(rollout_num):
+                pipe1_exp = pipe1_exp_list[i]
+
+                # pipe2_exp.send((buffer.buf_state[:buffer.now_len], buffer.buf_other[:buffer.now_len]))
+                buf_state, buf_other, buf_hidden_1, buf_hidden_2= pipe1_exp.recv()
+
+                steps += len(buf_state)
+                buf_hidden = (buf_hidden_1, buf_hidden_2)
+                buffer_mp.extend_buffer(buf_state, buf_other, buf_hidden, i)
+
+        agent.update_net(buffer_mp, target_step, batch_size, repeat_times)  # pre-training and hard update
+        agent.act_target.load_state_dict(agent.act.state_dict()) if getattr(env, 'act_target', None) else None
+        agent.cri_target.load_state_dict(agent.cri.state_dict()) if getattr(env, 'cri_target', None) in dir(
+            agent) else None
+    total_step = steps
+    '''send'''
+    pipe1_eva.send((agent.act, steps, 0, 0.5))  # send
+    # act, steps, obj_a, obj_c = pipe2_eva.recv()  # recv
+
+    '''start training'''
+    if_solve = False
+    while not ((if_break_early and if_solve)
+               or total_step > break_step
+               or os.path.exists(f'{cwd}/stop')):
+        '''update ReplayBuffer'''
+        steps = 0  # send by pipe1_eva
+        for i in range(rollout_num):
+            pipe1_exp = pipe1_exp_list[i]
+            '''send'''
+            pipe1_exp.send(agent.act)
+            # agent.act = pipe2_exp.recv()
+            '''recv'''
+            # pipe2_exp.send((buffer.buf_state[:buffer.now_len], buffer.buf_other[:buffer.now_len]))
+            buf_state, buf_other, buf_hidden_1, buf_hidden_2 = pipe1_exp.recv()
+
+            steps += len(buf_state)
+            buffer_hidden = (buf_hidden_1, buf_hidden_2)
+            buffer_mp.extend_buffer(buf_state, buf_other, buf_hidden, i)
+        total_step += steps
+
+        '''update network parameters'''
+        obj_a, obj_c = agent.update_net(buffer_mp, target_step, batch_size, repeat_times)
+
+        '''saves the agent with max reward'''
+        '''send'''
+        pipe1_eva.send((agent.act, steps, obj_a, obj_c))
+        # q_i_eva_get = pipe2_eva.recv()
+
+        if_solve = pipe1_eva.recv()
+
+        if pipe1_eva.poll():
+            '''recv'''
+            # pipe2_eva.send(if_solve)
+            if_solve = pipe1_eva.recv()
+
+    buffer_mp.print_state_norm(env.neg_state_avg if hasattr(env, 'neg_state_avg') else None,
+                               env.div_state_std if hasattr(env, 'div_state_std') else None)  # 2020-12-12
+
+    '''send'''
+    pipe1_eva.send('stop')
+    # q_i_eva_get = pipe2_eva.recv()
+    time.sleep(4)
+
 
 def mp_explore(args, pipe2_exp, worker_id):
     args.init_before_training(if_main=False)
@@ -560,6 +733,67 @@ def mp_explore(args, pipe2_exp, worker_id):
             agent.act = pipe2_exp.recv()
 
 
+def mp_exploreRNN(args, pipe2_exp, worker_id):
+    args.init_before_training(if_main=False)
+
+    '''basic arguments'''
+    env = args.env
+    agent = args.agent
+    rollout_num = args.rollout_num
+
+    '''training arguments'''
+    net_dim = args.net_dim
+    max_memo = args.max_memo
+    target_step = args.target_step
+    gamma = args.gamma
+    reward_scale = args.reward_scale
+
+    random_seed = args.random_seed
+    torch.manual_seed(random_seed + worker_id)
+    np.random.seed(random_seed + worker_id)
+    del args  # In order to show these hyper-parameters clearly, I put them above.
+
+    '''init: environment'''
+    max_step = env.max_step
+    state_dim = env.state_dim
+    action_dim = env.action_dim
+    if_discrete = env.if_discrete
+
+    '''init: Agent, ReplayBuffer'''
+    agent.init(net_dim, state_dim, action_dim)
+    agent.state = env.reset()
+
+    if_on_policy = getattr(agent, 'if_on_policy', False)
+    buffer = ReplayBufferRNN(max_len=max_memo // rollout_num + max_step, if_on_policy=if_on_policy,
+                          state_dim=state_dim, action_dim=1 if if_discrete else action_dim, if_gpu=False, hidden_dim=net_dim)
+
+    '''start exploring'''
+    exp_step = target_step // rollout_num
+    with torch.no_grad():
+        if not if_on_policy:
+            explore_before_trainingRNN(env, buffer, exp_step, reward_scale, gamma, agent)
+
+            buffer.update_now_len_before_sample()
+
+            pipe2_exp.send((buffer.buf_state[:buffer.now_len], buffer.buf_other[:buffer.now_len], buffer.buf_hidden_1[:buffer.now_len], buffer.buf_hidden_2[:buffer.now_len]))
+            # buf_state, buf_other = pipe1_exp.recv()
+
+            buffer.empty_buffer_before_explore()
+
+        while True:
+            agent.explore_env(env, buffer, exp_step, reward_scale, gamma)
+
+            buffer.update_now_len_before_sample()
+
+            pipe2_exp.send((buffer.buf_state[:buffer.now_len], buffer.buf_other[:buffer.now_len], buffer.buf_hidden_1[:buffer.now_len], buffer.buf_hidden_2[:buffer.now_len]))
+            # buf_state, buf_other, buf_hidden_1, buf_hidden_2 = pipe1_exp.recv()
+
+            buffer.empty_buffer_before_explore()
+
+            # pipe1_exp.send(agent.act)
+            agent.act = pipe2_exp.recv()
+
+
 def mp_evaluate(args, pipe2_eva):
     args.init_before_training(if_main=True)
 
@@ -578,6 +812,70 @@ def mp_evaluate(args, pipe2_eva):
 
     '''init: Evaluator'''
     evaluator = Evaluator(cwd=cwd, agent_id=agent_id, device=torch.device("cpu"), env=env_eval,
+                          eval_times1=eval_times1, eval_times2=eval_times2, show_gap=show_gap)  # build Evaluator
+
+    '''act_cpu without gradient for pipe1_eva'''
+    # pipe1_eva.send(agent.act)
+    act = pipe2_eva.recv()
+
+    act_cpu = deepcopy(act).to(torch.device("cpu"))  # for pipe1_eva
+    [setattr(param, 'requires_grad', False) for param in act_cpu.parameters()]
+
+    '''start evaluating'''
+    with torch.no_grad():  # speed up running
+        act, steps, obj_a, obj_c = pipe2_eva.recv()  # pipe2_eva (act, steps, obj_a, obj_c)
+
+        if_loop = True
+        while if_loop:
+            '''update actor'''
+            while not pipe2_eva.poll():  # wait until pipe2_eva not empty
+                time.sleep(1)
+            steps_sum = 0
+            while pipe2_eva.poll():  # receive the latest object from pipe
+                '''recv'''
+                # pipe1_eva.send((agent.act, steps, obj_a, obj_c))
+                # pipe1_eva.send('stop')
+                q_i_eva_get = pipe2_eva.recv()
+
+                if q_i_eva_get == 'stop':
+                    if_loop = False
+                    break
+                act, steps, obj_a, obj_c = q_i_eva_get
+                steps_sum += steps
+            act_cpu.load_state_dict(act.state_dict())
+            if_solve = evaluator.evaluate_save(act_cpu, steps_sum, obj_a, obj_c)
+            '''send'''
+            pipe2_eva.send(if_solve)
+            # if_solve = pipe1_eva.recv()
+
+            evaluator.draw_plot()
+
+    '''save the model, rename the directory'''
+    print(f'| SavedDir: {cwd}\n'
+          f'| UsedTime: {time.time() - evaluator.start_time:.0f}')
+
+    while pipe2_eva.poll():  # empty the pipe
+        pipe2_eva.recv()
+
+
+def mp_evaluateRNN(args, pipe2_eva):
+    args.init_before_training(if_main=True)
+
+    '''basic arguments'''
+    cwd = args.cwd
+    env = args.env
+    agent_id = args.gpu_id
+    env_eval = args.env_eval
+
+    '''evaluating arguments'''
+    show_gap = args.show_gap
+    eval_times1 = args.eval_times1
+    eval_times2 = args.eval_times2
+    env_eval = deepcopy(env) if env_eval is None else deepcopy(env_eval)
+    del args  # In order to show these hyper-parameters clearly, I put them above.
+
+    '''init: Evaluator'''
+    evaluator = EvaluatorRNN(cwd=cwd, agent_id=agent_id, device=torch.device("cpu"), env=env_eval,
                           eval_times1=eval_times1, eval_times2=eval_times2, show_gap=show_gap)  # build Evaluator
 
     '''act_cpu without gradient for pipe1_eva'''
@@ -698,6 +996,77 @@ class Evaluator:
 
         save_learning_curve(self.recorder, self.cwd, save_title)
 
+class EvaluatorRNN:
+    def __init__(self, cwd, agent_id, eval_times1, eval_times2, show_gap, env, device):
+        self.recorder = [(0., -np.inf, 0., 0., 0.), ]  # total_step, r_avg, r_std, obj_a, obj_c(actor 和critic的评价指标)
+        self.r_max = -np.inf
+        self.total_step = 0
+
+        self.cwd = cwd  # constant
+        self.device = device
+        self.agent_id = agent_id
+        self.show_gap = show_gap
+        self.eva_times1 = eval_times1
+        self.eva_times2 = eval_times2
+        self.env = env
+        self.target_reward = env.target_reward
+
+        self.used_time = None
+        self.start_time = time.time()
+        self.print_time = time.time()
+        print(f"{'ID':>2}  {'Step':>8}  {'MaxR':>8} |{'avgR':>8}  {'stdR':>8}   {'objA':>8}  {'objC':>8}")
+
+    def evaluate_save(self, act, steps, obj_a, obj_c) -> bool:
+        reward_list = [get_episode_returnRNN(self.env, act, self.device)
+                       for _ in range(self.eva_times1)]
+        r_avg = np.average(reward_list)  # episode return average
+        r_std = float(np.std(reward_list))  # episode return std
+
+        if r_avg > self.r_max:  # evaluate actor twice to save CPU Usage and keep precision
+            reward_list += [get_episode_returnRNN(self.env, act, self.device)
+                            for _ in range(self.eva_times2 - self.eva_times1)]
+            r_avg = np.average(reward_list)  # episode return average
+            r_std = float(np.std(reward_list))  # episode return std
+        if r_avg > self.r_max:  # save checkpoint with highest episode return
+            self.r_max = r_avg  # update max reward (episode return)
+
+            '''save actor.pth'''
+            act_save_path = f'{self.cwd}/actor.pth'
+            torch.save(act.state_dict(), act_save_path)
+            print(f"{self.agent_id:<2}  {self.total_step:8.2e}  {self.r_max:8.2f} |")
+
+        self.total_step += steps  # update total training steps
+        self.recorder.append((self.total_step, r_avg, r_std, obj_a, obj_c))  # update recorder
+
+        if_reach_goal = bool(self.r_max > self.target_reward)  # check if_reach_goal
+        if if_reach_goal and self.used_time is None:
+            self.used_time = int(time.time() - self.start_time)
+            print(f"{'ID':>2}  {'Step':>8}  {'TargetR':>8} |"
+                  f"{'avgR':>8}  {'stdR':>8}   {'UsedTime':>8}  ########\n"
+                  f"{self.agent_id:<2}  {self.total_step:8.2e}  {self.target_reward:8.2f} |"
+                  f"{r_avg:8.2f}  {r_std:8.2f}   {self.used_time:>8}  ########")
+
+        if time.time() - self.print_time > self.show_gap:
+            self.print_time = time.time()
+            print(f"{self.agent_id:<2}  {self.total_step:8.2e}  {self.r_max:8.2f} |"
+                  f"{r_avg:8.2f}  {r_std:8.2f}   {obj_a:8.2f}  {obj_c:8.2f}")
+        return if_reach_goal
+
+    def draw_plot(self):
+        if len(self.recorder) == 0:
+            print("| save_npy_draw_plot() WARNNING: len(self.recorder)==0")
+            return None
+
+        '''convert to array and save as npy'''
+        np.save('%s/recorder.npy' % self.cwd, self.recorder)
+
+        '''draw plot and save as png'''
+        train_time = int(time.time() - self.start_time)
+        total_step = int(self.recorder[-1][0])
+        save_title = f"plot_step_time_maxR_{int(total_step)}_{int(train_time)}_{self.r_max:.3f}"
+
+        save_learning_curve(self.recorder, self.cwd, save_title)
+
 
 def get_episode_return(env, act, device) -> float:
     episode_return = 0.0  # sum of rewards in an episode
@@ -711,11 +1080,33 @@ def get_episode_return(env, act, device) -> float:
         if if_discrete:
             a_tensor = a_tensor.argmax(dim=1)
         action = a_tensor.cpu().numpy()[0]  # not need detach(), because with torch.no_grad() outside
+        print(action)
         state, reward, done, _ = env.step(action)
         episode_return += reward
         if done:
             break
     return env.episode_return if hasattr(env, 'episode_return') else episode_return
+
+
+def get_episode_returnRNN(env, act, device) -> float:
+    episode_return = 0.0  # sum of rewards in an episode
+    max_step = env.max_step
+    if_discrete = env.if_discrete
+
+    state = env.reset()
+    hidden = act.init_hidden(batch_size=1)
+    for _ in range(max_step):
+        s_tensor = torch.as_tensor((state,), device=device)
+        a_tensor, hidden = act(s_tensor, hidden)
+        if if_discrete:
+            a_tensor = a_tensor.argmax(dim=1)
+        action = a_tensor.cpu().numpy()  # not need detach(), because with torch.no_grad() outside
+        state, reward, done, _ = env.step(action)
+        episode_return += reward
+        if done:
+            break
+    return env.episode_return if hasattr(env, 'episode_return') else episode_return
+
 
 
 def save_learning_curve(recorder, cwd='.', save_title='learning curve'):
@@ -785,6 +1176,30 @@ def explore_before_training(env, buffer, target_step, reward_scale, gamma) -> in
     return steps
 
 
+def explore_before_trainingRNN(env, buffer, target_step, reward_scale, gamma, act) -> int:
+    # just for off-policy. Because on-policy don't explore before training.
+    if_discrete = env.if_discrete
+    action_dim = env.action_dim
+    hidden = act.init_hidden(batch_size=1)
+    state = env.reset()
+    steps = 0
+
+    while steps < target_step:
+        #action = rd.randint(action_dim) if if_discrete else rd.uniform(-1, 1, size=action_dim)
+        with torch.no_grad():
+            action, hidden_next = act.select_action(state, hidden)
+        next_state, reward, done, _ = env.step(action)
+        steps += 1
+
+        scaled_reward = reward * reward_scale
+        mask = 0.0 if done else gamma
+        other = (scaled_reward, mask, action) if if_discrete else (scaled_reward, mask, *action)
+        buffer.append_buffer(state, other, hidden)
+        state = env.reset() if done else next_state
+        hidden = hidden_next
+    return steps
+
+
 def contra_game():
     args = Arguments(if_on_policy=True)
     args.random_seed = 0
@@ -845,7 +1260,8 @@ def contra_game():
 if __name__ == '__main__':
     #contra_game()
     #demo1_discrete_action_space()
-    demo2_continuous_action_space_off_policy()
+    #demo2_continuous_action_space_off_policy()
+    demo2_continuous_action_space_off_policyRNN()
     # demo2_continuous_action_space_on_policy()
     # demo3_custom_env_fin_rl()
     #demo4_bullet_mujoco_off_policy()
