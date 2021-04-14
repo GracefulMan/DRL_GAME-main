@@ -185,6 +185,10 @@ class AgentBaseRNN:
         :return int target_step: collected target_step number of step in env
         """
         hidden = self.init_hidden(batch_size=1)
+        h, c = hidden
+        h = h.to(self.device)
+        c = c.to(self.device)
+        hidden = (h , c)
         for _ in range(target_step):
             action, hidden = self.select_action(self.state, hidden)
             h, c = hidden
