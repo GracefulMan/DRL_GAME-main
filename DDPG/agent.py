@@ -486,7 +486,10 @@ class AgentDDPGWithRNN(AgentBaseRNN):
         self.cri_optimizer = torch.optim.Adam(self.cri.parameters(), lr=self.learning_rate)
 
     def init_hidden(self, batch_size):
-        return self.act.init_hidden(batch_size)
+        h, c=self.act.init_hidden(batch_size)
+        h = h.to(self.device)
+        c = c.to(self.device)
+        return (h, c)
 
     def select_action(self, state, hidden) ->Tuple[np.ndarray, np.ndarray]:
         states = torch.as_tensor((state,), dtype=torch.float32, device=self.device).detach_()
