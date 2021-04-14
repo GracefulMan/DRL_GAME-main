@@ -497,6 +497,10 @@ class AgentDDPGWithRNN(AgentBaseRNN):
 
     def select_action(self, state, hidden) ->Tuple[np.ndarray, np.ndarray]:
         states = torch.as_tensor((state,), dtype=torch.float32, device=self.device).detach_()
+        h, c = hidden
+        h = h.to(self.device)
+        c = c.to(self.device)
+        hidden = (h, c)
         action, hidden = self.act(states, hidden)
         action = action[0].cpu().numpy()
         return (action + self.ou_noise()).clip(-1, 1), hidden
