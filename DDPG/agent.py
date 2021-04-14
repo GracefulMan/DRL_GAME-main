@@ -187,6 +187,10 @@ class AgentBaseRNN:
         hidden = self.init_hidden(batch_size=1)
         for _ in range(target_step):
             action, hidden = self.select_action(self.state, hidden)
+            h, c = hidden
+            h = h.cpu()
+            c = c.cpu()
+            hidden = (h, c)
             next_s, reward, done, _ = env.step(action)
             other = (reward * reward_scale,  0.0 if done else gamma, *action)
             buffer.append_buffer(self.state, other, hidden)
