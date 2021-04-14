@@ -1194,6 +1194,10 @@ def explore_before_trainingRNN(env, buffer, target_step, reward_scale, gamma, ac
         scaled_reward = reward * reward_scale
         mask = 0.0 if done else gamma
         other = (scaled_reward, mask, action) if if_discrete else (scaled_reward, mask, *action)
+        h,c = hidden
+        h = h.cpu()
+        c = c.cpu()
+        hidden = (h, c)
         buffer.append_buffer(state, other, hidden)
         state = env.reset() if done else next_state
         hidden = hidden_next
