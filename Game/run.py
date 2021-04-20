@@ -34,13 +34,13 @@ class Arguments:
 
         '''Arguments for training (off-policy)'''
         self.net_dim = 2 ** 8  # the network width
-        self.batch_size = 2 ** 8  # num of transitions sampled from replay buffer.
+        self.batch_size = 2 ** 6  # num of transitions sampled from replay buffer.
         self.repeat_times = 2 ** 0  # repeatedly update network to keep critic's loss small
         self.target_step = 2 ** 10  # collect target_step, then update network
-        self.max_memo = 2 ** 17  # capacity of replay buffer
+        self.max_memo = 2 ** 10  # capacity of replay buffer
         if if_on_policy:  # (on-policy)
             self.net_dim = 2 ** 9
-            self.batch_size = 2 ** 8
+            self.batch_size = 2 ** 6
             self.repeat_times = 2 ** 4
             self.target_step = 2 ** 12
             self.max_memo = self.target_step
@@ -183,7 +183,7 @@ def demo2_continuous_action_space_on_policy():
 
     '''train and evaluate'''
     # train_and_evaluate(args)
-    args.rollout_num = 4
+    args.rollout_num = 2
     train_and_evaluate_mp(args)
 
 

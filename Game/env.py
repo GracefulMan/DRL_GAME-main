@@ -6,7 +6,7 @@ import cv2
 
 
 class PreprocessEnv(gym.Wrapper):  # environment wrapper #
-    def __init__(self, env, if_print=True, data_type=np.float32, is_image=False, is_gray=True):
+    def __init__(self, env, if_print=True, data_type=np.float32, is_image=False, is_gray=False):
         """Preprocess a standard OpenAI gym environment for RL training.
 
         :param env: a standard OpenAI gym environment, it has env.reset() and env.step()
@@ -17,10 +17,11 @@ class PreprocessEnv(gym.Wrapper):  # environment wrapper #
         self.env = env
         self.data_type = data_type
 
+
+
         (self.env_name, self.state_dim, self.action_dim, self.action_max, self.max_step,
          self.if_discrete, self.target_reward
          ) = get_gym_env_info(env, if_print)
-
         # 图像输入
         self.is_gray = is_gray
         self.is_image = is_image
@@ -31,6 +32,8 @@ class PreprocessEnv(gym.Wrapper):  # environment wrapper #
             else:
                 w, h, c = self.state_dim
                 self.state_dim = [c, w, h]
+
+
 
         state_avg, state_std = get_avg_std__for_state_norm(self.env_name)
         if state_avg is not None:
