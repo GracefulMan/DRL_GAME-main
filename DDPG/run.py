@@ -112,7 +112,7 @@ def demo1_discrete_action_space():
     # args.net_dim = 2 ** 7  # change a default hyper-parameters
     # args.batch_size = 2 ** 7
     "TotalStep: 2e3, TargetReward: , UsedTime: 10s"
-    args.env = PreprocessEnv(env=gym.make('LunarLander-v2'))
+    args.env = PreprocessEnv(env=gym.make('CartPole-v1'))
     args.net_dim = 2 ** 8
     args.batch_size = 2 ** 8
     "TotalStep: 6e4, TargetReward: 200, UsedTime: 600s"
