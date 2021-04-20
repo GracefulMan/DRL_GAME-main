@@ -33,7 +33,7 @@ class Arguments:
         self.gpu_id = gpu_id  # choose the GPU for running. gpu_id is None means set it automatically
 
         '''Arguments for training (off-policy)'''
-        self.net_dim = 2 ** 8  # the network width
+        self.net_dim = 2 ** 5  # the network width
         self.batch_size = 2 ** 8  # num of transitions sampled from replay buffer.
         self.repeat_times = 2 ** 0  # repeatedly update network to keep critic's loss small
         self.target_step = 2 ** 10  # collect target_step, then update network
