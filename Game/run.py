@@ -112,14 +112,14 @@ def demo1_discrete_action_space():
     # args.net_dim = 2 ** 7  # change a default hyper-parameters
     # args.batch_size = 2 ** 7
     "TotalStep: 2e3, TargetReward: , UsedTime: 10s"
-    args.env = PreprocessEnv(env=gym.make('LunarLander-v2'))
+    args.env = PreprocessEnv(env=gym.make('CartPole-v0'))
     args.net_dim = 2 ** 8
     args.batch_size = 2 ** 8
     "TotalStep: 6e4, TargetReward: 200, UsedTime: 600s"
     '''train and evaluate'''
-    train_and_evaluate(args)
-    # args.rollout_num = 4
-    # train_and_evaluate__multiprocessing(args)
+    #train_and_evaluate(args)
+    args.rollout_num = 4
+    train_and_evaluate_mp(args)
 
 
 def demo2_continuous_action_space_off_policy():
@@ -171,8 +171,8 @@ def demo2_continuous_action_space_on_policy():
     # args.env = PreprocessEnv(env=env)
     # args.reward_scale = 2 ** -3  # RewardRange: -1800 < -200 < -50 < 0
     "TotalStep: 4e5, TargetReward: -200, UsedTime: 400s"
-    # args.env = PreprocessEnv(env=gym.make('Breakout-v0'),is_image=True)
-    args.env = PreprocessEnv(env=gym.make('CartPole-v0'),is_image=False)
+    args.env = PreprocessEnv(env=gym.make('Breakout-v0'),is_image=True)
+    #args.env = PreprocessEnv(env=gym.make('CartPole-v0'), is_image=False)
     args.agent.if_discrete = args.env.if_discrete
     #args.reward_scale = 2 ** 0  # RewardRange: -800 < -200 < 200 < 302
     "TotalStep: 8e5, TargetReward: 200, UsedTime: 1500s"
