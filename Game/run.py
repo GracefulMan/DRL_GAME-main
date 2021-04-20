@@ -179,7 +179,7 @@ def demo2_continuous_action_space_on_policy():
     # args.env = PreprocessEnv(env=gym.make('BipedalWalker-v3'))
     # args.reward_scale = 2 ** 0  # RewardRange: -200 < -150 < 300 < 334
     # args.gamma = 0.96
-    "TotalStep: 8e5, TargetReward: 300, UsedTime: 1800s"
+    "TotalStep: 8e5, TargetReward: 300, UsedTime: 1800s "
 
     '''train and evaluate'''
     # train_and_evaluate(args)
