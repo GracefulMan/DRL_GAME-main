@@ -152,6 +152,8 @@ class ActorPPO(nn.Module):
         else:
             def set_dim(i):
                 return int(12 * 1.5 ** i)
+                #return int(1)
+
 
             self.conv = nn.Sequential(NnnReshape(*state_dim),  # -> [batch_size, 4, 96, 96]
                                      nn.Conv2d(state_dim[0], set_dim(0), 3, 2, bias=True), nn.LeakyReLU(),

@@ -171,7 +171,7 @@ def demo2_continuous_action_space_on_policy():
     # args.env = PreprocessEnv(env=env)
     # args.reward_scale = 2 ** -3  # RewardRange: -1800 < -200 < -50 < 0
     "TotalStep: 4e5, TargetReward: -200, UsedTime: 400s"
-    args.env = PreprocessEnv(env=gym.make('Breakout-v0'),is_image=True,is_gray=True)
+    args.env = PreprocessEnv(env=gym.make('Breakout-v0'),is_image=True,is_gray=True,resize=128)
     #args.env = PreprocessEnv(env=gym.make('CartPole-v0'), is_image=False)
     args.agent.if_discrete = args.env.if_discrete
     #args.reward_scale = 2 ** 0  # RewardRange: -800 < -200 < 200 < 302

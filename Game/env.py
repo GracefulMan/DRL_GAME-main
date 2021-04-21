@@ -6,7 +6,7 @@ import cv2
 
 
 class PreprocessEnv(gym.Wrapper):  # environment wrapper #
-    def __init__(self, env, if_print=True, data_type=np.float32, is_image=False, is_gray=False):
+    def __init__(self, env, if_print=True, data_type=np.float32, is_image=False, is_gray=False, resize=None):
         """Preprocess a standard OpenAI gym environment for RL training.
 
         :param env: a standard OpenAI gym environment, it has env.reset() and env.step()
@@ -25,14 +25,14 @@ class PreprocessEnv(gym.Wrapper):  # environment wrapper #
         # 图像输入
         self.is_gray = is_gray
         self.is_image = is_image
+        self.resize = resize
         if self.is_image:
-            if is_gray:
-                w, h, _ = self.state_dim
-                self.state_dim = [1, w, h]
-            else:
-                w, h, c = self.state_dim
-                self.state_dim = [c, w, h]
-
+            w, h, c = self.state_dim
+            if self.is_gray:c = 1
+            if self.resize is not None:
+                w, h = self.resize, self.resize
+            self.state_dim = [c, w, h]
+            print('new state_dim:', self.state_dim)
 
 
         state_avg, state_std = get_avg_std__for_state_norm(self.env_name)
@@ -56,7 +56,7 @@ class PreprocessEnv(gym.Wrapper):  # environment wrapper #
         state = self.env.reset()
         if self.is_image:
             if self.is_gray:
-                state = process_frame(state)
+                state = process_frame(state, self.resize)
             state = state.transpose([2, 0, 1])
             state = state / 255.
         return state.astype(self.data_type)
@@ -87,7 +87,7 @@ class PreprocessEnv(gym.Wrapper):  # environment wrapper #
         state, reward, done, info = self.env.step(action * self.action_max)
         if self.is_image:
             if self.is_gray:
-                state = process_frame(state)
+                state = process_frame(state, self.resize)
             state = state.transpose([2, 0, 1])
             state = state / 255.
 
@@ -110,8 +110,10 @@ class PreprocessEnv(gym.Wrapper):  # environment wrapper #
         return state.astype(self.data_type), reward, done, info
 
 
-def process_frame(frame):
+def process_frame(frame, resize):
     frame = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)
+    if resize is not None:
+        frame = cv2.resize(frame, (resize, resize))
     return frame[:, :, np.newaxis]
 
 def get_avg_std__for_state_norm(env_name) -> (np.ndarray, np.ndarray):
