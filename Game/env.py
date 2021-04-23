@@ -160,9 +160,8 @@ class AtariGameEnv(PreprocessEnv):
             # so it's important to keep lives > 0, so that we only reset once
             # the environment advertises done.
             done = True
-            reward = -0.1 # fixxed by myself.
         self.lives = lives
-
+        if not done: reward = 0.01
         if self.is_image:
             if self.is_gray:
                 state = process_frame(state, self.resize)
