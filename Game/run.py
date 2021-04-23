@@ -1,20 +1,19 @@
-import os
-import gym
 import time
-import torch
+from copy import deepcopy
+
+import gym
 import numpy as np
 import numpy.random as rd
+import torch
 
-from copy import deepcopy
 from agent import ReplayBuffer, ReplayBufferMP
-from env import PreprocessEnv
+from env import PreprocessEnv, AtariGameEnv
 
 gym.logger.set_level(40)  # Block warning: 'WARN: Box bound precision lowered by casting to float32'
 # mac
 import os
-os.environ["KMP_DUPLICATE_LIB_OK"]="TRUE"
 
-
+os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 
 """Plan to
 Arguments(), let Arguments ask AgentXXX to get if_on_policy
@@ -33,7 +32,7 @@ class Arguments:
         self.gpu_id = gpu_id  # choose the GPU for running. gpu_id is None means set it automatically
 
         '''Arguments for training (off-policy)'''
-        self.net_dim = 2 ** 8  # the network width
+        self.net_dim = 2 ** 6  # the network width
         self.batch_size = 2 ** 6  # num of transitions sampled from replay buffer.
         self.repeat_times = 2 ** 0  # repeatedly update network to keep critic's loss small
         self.target_step = 2 ** 10  # collect target_step, then update network
@@ -52,7 +51,7 @@ class Arguments:
         '''Arguments for evaluate'''
         self.if_remove = True  # remove the cwd folder? (True, False, None:ask me)
         self.if_allow_break = True  # allow break training when reach goal (early termination)
-        self.break_step = 2 ** 20  # break training after 'total_step > break_step'
+        self.break_step = 2 ** 21  # break training after 'total_step > break_step'
         self.eval_times1 = 2 ** 2  # evaluation times
         self.eval_times2 = 2 ** 4  # evaluation times if 'eval_reward > max_reward'
         self.show_gap = 2 ** 8  # show the Reward and Loss value per show_gap seconds
@@ -117,7 +116,7 @@ def demo1_discrete_action_space():
     args.batch_size = 2 ** 8
     "TotalStep: 6e4, TargetReward: 200, UsedTime: 600s"
     '''train and evaluate'''
-    #train_and_evaluate(args)
+    # train_and_evaluate(args)
     args.rollout_num = 4
     train_and_evaluate_mp(args)
 
@@ -171,10 +170,10 @@ def demo2_continuous_action_space_on_policy():
     # args.env = PreprocessEnv(env=env)
     # args.reward_scale = 2 ** -3  # RewardRange: -1800 < -200 < -50 < 0
     "TotalStep: 4e5, TargetReward: -200, UsedTime: 400s"
-    args.env = PreprocessEnv(env=gym.make('Breakout-v0'),is_image=True,is_gray=True,resize=128)
-    #args.env = PreprocessEnv(env=gym.make('CartPole-v0'), is_image=False)
+    args.env = AtariGameEnv(env=gym.make('Breakout-v0'))
+    # args.env = PreprocessEnv(env=gym.make('CartPole-v0'), is_image=False)
     args.agent.if_discrete = args.env.if_discrete
-    #args.reward_scale = 2 ** 0  # RewardRange: -800 < -200 < 200 < 302
+    # args.reward_scale = 2 ** 0  # RewardRange: -800 < -200 < 200 < 302
     "TotalStep: 8e5, TargetReward: 200, UsedTime: 1500s"
     # args.env = PreprocessEnv(env=gym.make('BipedalWalker-v3'))
     # args.reward_scale = 2 ** 0  # RewardRange: -200 < -150 < 300 < 334
@@ -286,22 +285,22 @@ def train_and_evaluate(args):
     args.init_before_training()
 
     '''basic arguments'''
-    cwd = args.cwd # 存放数据的目录
-    env = args.env # 环境
-    agent = args.agent # agent网络
+    cwd = args.cwd  # 存放数据的目录
+    env = args.env  # 环境
+    agent = args.agent  # agent网络
     gpu_id = args.gpu_id  # necessary for Evaluator?
-    env_eval = args.env_eval # 测试的环境
+    env_eval = args.env_eval  # 测试的环境
 
     '''training arguments'''
-    net_dim = args.net_dim # 网络隐藏层的维度
-    max_memo = args.max_memo # buffer最大的尺寸
-    break_step = args.break_step #
+    net_dim = args.net_dim  # 网络隐藏层的维度
+    max_memo = args.max_memo  # buffer最大的尺寸
+    break_step = args.break_step  #
     batch_size = args.batch_size
     target_step = args.target_step
     repeat_times = args.repeat_times
-    if_break_early = args.if_allow_break # 提前终止
+    if_break_early = args.if_allow_break  # 提前终止
     gamma = args.gamma
-    reward_scale = args.reward_scale # 奖励缩放
+    reward_scale = args.reward_scale  # 奖励缩放
 
     '''evaluating arguments'''
     show_gap = args.show_gap
@@ -333,7 +332,7 @@ def train_and_evaluate(args):
         steps = 0
     else:  # explore_before_training for off-policy
         with torch.no_grad():  # update replay buffer
-            steps = explore_before_training(env, buffer, target_step, reward_scale, gamma) # 
+            steps = explore_before_training(env, buffer, target_step, reward_scale, gamma)  #
 
         agent.update_net(buffer, target_step, batch_size, repeat_times)  # pre-training and hard update
         agent.act_target.load_state_dict(agent.act.state_dict()) if getattr(agent, 'act_target', None) else None
@@ -355,6 +354,7 @@ def train_and_evaluate(args):
         with torch.no_grad():  # speed up running
             if_reach_goal = evaluator.evaluate_save(agent.act, steps, obj_a, obj_c)
     evaluator.draw_plot()
+
 
 '''multiprocessing training'''
 
@@ -791,7 +791,7 @@ def contra_game():
 
     from agent import AgentPPO  # AgentSAC, AgentTD3, AgentDDPG
     from nes_py.wrappers import JoypadSpace
-    from Contra.actions import SIMPLE_MOVEMENT, COMPLEX_MOVEMENT, RIGHT_ONLY
+    from Contra.actions import SIMPLE_MOVEMENT
     args.agent = AgentPPO()  # AgentSAC(), AgentTD3(), AgentDDPG()
     args.agent.if_use_dn = True
     args.net_dim = 2 ** 7  # default is 2 ** 8 is too large for if_use_dn = True
@@ -800,7 +800,7 @@ def contra_game():
 
     def fix_visual_game(env: gym.Wrapper) -> gym.Wrapper:
         w, h, channels = env.observation_space.shape
-        setattr(env,'env_name', env.unwrapped.spec.id)
+        setattr(env, 'env_name', env.unwrapped.spec.id)
         setattr(env, 'state_num', (channels, w, h))
         setattr(env, 'state_dim', 3)
         setattr(env, 'action_dim', env.action_space.n)
@@ -813,7 +813,7 @@ def contra_game():
             target_reward = 2 ** 16
         setattr(env, 'target_reward', target_reward)
 
-        def convert_image_shape(img: np.ndarray) ->  np.ndarray:
+        def convert_image_shape(img: np.ndarray) -> np.ndarray:
             (w, h, channels) = img.shape
             return img.reshape((channels, w, h))
 
@@ -822,9 +822,12 @@ def contra_game():
                 observation, reward, terminal, info = env_step(action)
                 print(type(observation))
                 return convert_image_shape(observation), reward, terminal, info
+
             return step
+
         env.step = fix_step(env.step)
         return env
+
     args.env = fix_visual_game(env)
     args.env.max_step = 4096  # important, default env.max_step=1800?
 
@@ -842,11 +845,12 @@ def contra_game():
     args.rollout_num = 8
     train_and_evaluate_mp(args)
 
+
 if __name__ == '__main__':
-    #contra_game()
-    #demo1_discrete_action_space()
-    #demo2_continuous_action_space_off_policy()
+    # contra_game()
+    # demo1_discrete_action_space()
+    # demo2_continuous_action_space_off_policy()
     demo2_continuous_action_space_on_policy()
     # demo3_custom_env_fin_rl()
-    #demo4_bullet_mujoco_off_policy()
-    #demo4_bullet_mujoco_on_policy()
+    # demo4_bullet_mujoco_off_policy()
+    # demo4_bullet_mujoco_on_policy()

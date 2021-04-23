@@ -16,12 +16,10 @@ class PreprocessEnv(gym.Wrapper):  # environment wrapper #
         super(PreprocessEnv, self).__init__(env)
         self.env = env
         self.data_type = data_type
-
-
-
+        self.if_print = if_print
         (self.env_name, self.state_dim, self.action_dim, self.action_max, self.max_step,
          self.if_discrete, self.target_reward
-         ) = get_gym_env_info(env, if_print)
+         ) = get_gym_env_info(env)
         # 图像输入
         self.is_gray = is_gray
         self.is_image = is_image
@@ -45,6 +43,12 @@ class PreprocessEnv(gym.Wrapper):  # environment wrapper #
         else:
             self.reset = self.reset_type
             self.step = self.step_type
+
+
+    def print_info(self):
+        print(f"\n| env_name:  {self.env_name}, action space if_discrete: {self.if_discrete}"
+              f"\n| state_dim: {self.state_dim}, action_dim: {self.action_dim}, action_max: {self.action_max}"
+              f"\n| max_step:  {self.max_step}, target_reward: {self.target_reward}")
 
     def reset_type(self) -> np.ndarray:
         """ state = env.reset()
@@ -110,6 +114,50 @@ class PreprocessEnv(gym.Wrapper):  # environment wrapper #
         return state.astype(self.data_type), reward, done, info
 
 
+class AtariGameEnv(PreprocessEnv):
+    def __init__(self,*args ,**kwargs):
+        kwargs['is_image'] = True
+        kwargs['is_gray'] = True
+        kwargs['resize'] = 84
+        self.layer_nums = 4
+        self.gap = 2
+        self.current = 0
+        super(AtariGameEnv, self).__init__(*args, **kwargs)
+        self.state_dim[0] = self.layer_nums
+        self.state = np.zeros((self.state_dim))
+        self.print_info()
+
+
+    def reset_type(self) -> np.ndarray:
+        state = self.env.reset()
+        if self.is_image:
+            if self.is_gray:
+                state = process_frame(state, self.resize)
+            state = state.transpose([2, 0, 1])
+            state = state / 255.
+        self.state = np.concatenate((self.state[1:], state))
+        return self.state.astype(self.data_type)
+
+    def step_type(self, action) -> (np.ndarray, float, bool, dict):
+        state, reward, done, info = self.env.step(action * self.action_max)
+        if self.is_image:
+            if self.is_gray:
+                state = process_frame(state, self.resize)
+            state = state.transpose([2, 0, 1])
+            state = state / 255.
+        if self.current % self.gap == 0:
+            self.state = np.concatenate((self.state[1:], state))
+        else:
+            self.current += 1
+            if self.current == self.gap:
+                self.current = 0
+        return self.state.astype(self.data_type), reward, done, info
+
+    def print_info(self):
+        PreprocessEnv.print_info(self)
+
+
+
 def process_frame(frame, resize):
     frame = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)
     if resize is not None:
@@ -172,7 +220,7 @@ def get_avg_std__for_state_norm(env_name) -> (np.ndarray, np.ndarray):
     return avg, std
 
 
-def get_gym_env_info(env, if_print) -> (str, int, int, int, int, bool, float):
+def get_gym_env_info(env) -> (str, int, int, int, int, bool, float):
     """get information of a standard OpenAI gym env.
 
     The DRL algorithm AgentXXX need these env information for building networks and training.
@@ -217,9 +265,6 @@ def get_gym_env_info(env, if_print) -> (str, int, int, int, int, bool, float):
     else:
         raise RuntimeError('| Please set these value manually: if_discrete=bool, action_dim=int, action_max=1.0')
 
-    print(f"\n| env_name:  {env_name}, action space if_discrete: {if_discrete}"
-          f"\n| state_dim: {state_dim}, action_dim: {action_dim}, action_max: {action_max}"
-          f"\n| max_step:  {max_step}, target_reward: {target_reward}") if if_print else None
     return env_name, state_dim, action_dim, action_max, max_step, if_discrete, target_reward
 
 

@@ -1,6 +1,6 @@
 import gym
 import time
-from Game.env import PreprocessEnv
+from Game.env import AtariGameEnv,PreprocessEnv
 import numpy as np
 
 
@@ -21,6 +21,26 @@ def env_test():
         print(s_.shape)
         if reward!=0: print(reward)
         time.sleep(0.01)
+
+
+
+def env_test2():
+    env = gym.make('Breakout-v4')
+    env = AtariGameEnv(env)
+    print('id:', env.unwrapped.spec.id)
+    print('target reward:', env.target_reward)
+    print('observation space:', env.observation_space.shape)
+    print('action space:', env.action_space)
+    epochs = 1000
+    env.reset()
+    for _ in range(epochs):
+        env.render()
+        action = env.action_space.sample()
+        s_, reward, done, _ = env.step(action)
+        print(s_.shape)
+        if reward!=0: print(reward)
+        time.sleep(0.01)
+
 
 
 def numpy_test():
@@ -44,5 +64,6 @@ def image_test():
 
 if __name__ == '__main__':
     # numpy_test()
-    env_test()
+    # env_test()
     #image_test()
+    env_test2()

@@ -156,12 +156,12 @@ class ActorPPO(nn.Module):
 
 
             self.conv = nn.Sequential(NnnReshape(*state_dim),  # -> [batch_size, 4, 96, 96]
-                                     nn.Conv2d(state_dim[0], set_dim(0), 3, 2, bias=True), nn.LeakyReLU(),
-                                     nn.Conv2d(set_dim(0), set_dim(1), 3, 2, bias=False), nn.ReLU(),
-                                     nn.Conv2d(set_dim(1), set_dim(2), 3, 2, bias=False), nn.ReLU(),
-                                     nn.Conv2d(set_dim(2), set_dim(3), 3, 2, bias=True), nn.ReLU(),
-                                     nn.Conv2d(set_dim(3), set_dim(4), 3, 2, bias=True), nn.ReLU(),
-                                     nn.Conv2d(set_dim(4), set_dim(5), 3, 2, bias=True), nn.ReLU(),
+                                     nn.Conv2d(state_dim[0], set_dim(0), 3, 2,1, bias=True), nn.LeakyReLU(),
+                                     nn.Conv2d(set_dim(0), set_dim(1), 3, 2, 1,bias=False), nn.ReLU(),
+                                     nn.Conv2d(set_dim(1), set_dim(2), 3, 2,1, bias=False), nn.ReLU(),
+                                     nn.Conv2d(set_dim(2), set_dim(3), 3, 2,1, bias=True), nn.ReLU(),
+                                     nn.Conv2d(set_dim(3), set_dim(4), 3, 2,1, bias=True), nn.ReLU(),
+                                     nn.Conv2d(set_dim(4), set_dim(5), 3, 2,1, bias=True), nn.ReLU(),
                                      NnnReshape(-1),
                                      )
             with torch.no_grad():
@@ -293,12 +293,12 @@ class CriticAdv(nn.Module):
             def set_dim(i):
                 return int(12 * 1.5 ** i)
             self.conv = nn.Sequential(NnnReshape(*state_dim),  # -> [batch_size, 4, 96, 96]
-                                     nn.Conv2d(state_dim[0], set_dim(0), 4, 2, bias=True), nn.LeakyReLU(),
-                                     nn.Conv2d(set_dim(0), set_dim(1), 3, 2, bias=False), nn.ReLU(),
-                                     nn.Conv2d(set_dim(1), set_dim(2), 3, 2, bias=False), nn.ReLU(),
-                                     nn.Conv2d(set_dim(2), set_dim(3), 3, 2, bias=True), nn.ReLU(),
-                                     nn.Conv2d(set_dim(3), set_dim(4), 3, 1, bias=True), nn.ReLU(),
-                                     nn.Conv2d(set_dim(4), set_dim(5), 3, 1, bias=True), nn.ReLU(),
+                                     nn.Conv2d(state_dim[0], set_dim(0), 3, 2, 1,bias=True), nn.LeakyReLU(),
+                                     nn.Conv2d(set_dim(0), set_dim(1), 3, 2, 1,bias=False), nn.ReLU(),
+                                     nn.Conv2d(set_dim(1), set_dim(2), 3, 2, 1,bias=False), nn.ReLU(),
+                                     nn.Conv2d(set_dim(2), set_dim(3), 3, 2,1, bias=True), nn.ReLU(),
+                                     nn.Conv2d(set_dim(3), set_dim(4), 3, 2,1, bias=True), nn.ReLU(),
+                                     nn.Conv2d(set_dim(4), set_dim(5), 3, 2,1, bias=True), nn.ReLU(),
                                      NnnReshape(-1),
                                      )
             with torch.no_grad():
@@ -512,12 +512,12 @@ class InterPPO(nn.Module):  # Pixel-level state version
                                        nn.Linear(mid_dim, mid_dim))  # the only difference.
         else:
             self.enc_s = nn.Sequential(NnnReshape(state_dim),  # -> [batch_size, 4, 96, 96]
-                                       nn.Conv2d(state_dim[0], set_dim(0), 4, 2, bias=True), nn.LeakyReLU(),
-                                       nn.Conv2d(set_dim(0), set_dim(1), 3, 2, bias=False), nn.ReLU(),
-                                       nn.Conv2d(set_dim(1), set_dim(2), 3, 2, bias=False), nn.ReLU(),
-                                       nn.Conv2d(set_dim(2), set_dim(3), 3, 2, bias=True), nn.ReLU(),
-                                       nn.Conv2d(set_dim(3), set_dim(4), 3, 1, bias=True), nn.ReLU(),
-                                       nn.Conv2d(set_dim(4), set_dim(5), 3, 1, bias=True), nn.ReLU(),
+                                       nn.Conv2d(state_dim[0], set_dim(0), 3, 2, 1,bias=True), nn.LeakyReLU(),
+                                       nn.Conv2d(set_dim(0), set_dim(1), 3, 2,1, bias=False), nn.ReLU(),
+                                       nn.Conv2d(set_dim(1), set_dim(2), 3, 2,1, bias=False), nn.ReLU(),
+                                       nn.Conv2d(set_dim(2), set_dim(3), 3, 2,1, bias=True), nn.ReLU(),
+                                       nn.Conv2d(set_dim(3), set_dim(4), 3, 1,1, bias=True), nn.ReLU(),
+                                       nn.Conv2d(set_dim(4), set_dim(5), 3, 1, 1,bias=True), nn.ReLU(),
                                        NnnReshape(-1),
                                        nn.Linear(set_dim(5), mid_dim), nn.ReLU(),
                                        nn.Linear(mid_dim, mid_dim))
@@ -638,11 +638,11 @@ def demo_conv2d_state():
 
 if __name__ == '__main__':
     #demo_conv2d_state()
-    inputs = torch.rand((1, 3,  210, 160))
+    inputs = torch.rand((1, 3,  84, 84))
     # net = ImageConv([96, 120, 3])
     # net(inputs)
-    actor = ActorPPO(256, state_dim=[3, 210, 160], action_dim=8)
-    critic = CriticAdv(state_dim=[3, 210, 160], mid_dim=256)
+    actor = ActorPPO(256, state_dim=[3, 84, 84], action_dim=8)
+    critic = CriticAdv(state_dim=[3, 84, 84], mid_dim=256)
     print(critic(inputs))
     print(actor(inputs))
 
