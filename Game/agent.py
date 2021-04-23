@@ -755,8 +755,6 @@ class AgentPPO(AgentBase):
         self.compute_reward = self.compute_reward_gae if self.if_use_gae else self.compute_reward_adv
 
         self.act = ActorPPO(net_dim, state_dim, action_dim).to(self.device)
-        if os.path.exists('AgentPPO/CartPole-v0_0/actor.pth'):
-            self.act.load_state_dict(torch.load('AgentPPO/CartPole-v0_0/actor.pth'))
         self.cri = CriticAdv(state_dim, net_dim).to(self.device)
 
         self.criterion = torch.nn.SmoothL1Loss()
