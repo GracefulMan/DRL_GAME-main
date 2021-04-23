@@ -6,7 +6,7 @@ import cv2
 
 
 class PreprocessEnv(gym.Wrapper):  # environment wrapper #
-    def __init__(self, env, if_print=True, data_type=np.float32, is_image=False, is_gray=False, resize=None):
+    def __init__(self, env, if_print=True, data_type=np.float16, is_image=False, is_gray=False, resize=None):
         """Preprocess a standard OpenAI gym environment for RL training.
 
         :param env: a standard OpenAI gym environment, it has env.reset() and env.step()
