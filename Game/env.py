@@ -161,7 +161,6 @@ class AtariGameEnv(PreprocessEnv):
             # the environment advertises done.
             done = True
         self.lives = lives
-        if not done: reward = 0.01
         if self.is_image:
             if self.is_gray:
                 state = process_frame(state, self.resize)
