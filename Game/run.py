@@ -182,7 +182,7 @@ def demo2_continuous_action_space_on_policy():
 
     '''train and evaluate'''
     # train_and_evaluate(args)
-    args.rollout_num = 2
+    args.rollout_num = 1
     train_and_evaluate_mp(args)
 
 
