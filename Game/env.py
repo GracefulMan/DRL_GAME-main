@@ -118,7 +118,7 @@ class AtariGameEnv(PreprocessEnv):
     def __init__(self,*args ,**kwargs):
         kwargs['is_image'] = True
         kwargs['is_gray'] = True
-        kwargs['resize'] = 84
+        kwargs['resize'] = 64
         self.layer_nums = 4
         self.gap = 2
         self.current = 0
