@@ -125,11 +125,21 @@ class AtariGameEnv(PreprocessEnv):
         super(AtariGameEnv, self).__init__(*args, **kwargs)
         self.state_dim[0] = self.layer_nums
         self.state = np.zeros((self.state_dim))
+
+        self.lives = 0
+        self.was_real_done = True
         self.print_info()
 
 
-    def reset_type(self) -> np.ndarray:
-        state = self.env.reset()
+    def reset_type(self, **kwargs) -> np.ndarray:
+
+        if self.was_real_done:
+            state = self.env.reset(**kwargs)
+        else:
+            # no-op step to advance from terminal/lost life state
+            state, _, _, _ = self.env.step(0)
+        self.lives = self.env.unwrapped.ale.lives()
+
         if self.is_image:
             if self.is_gray:
                 state = process_frame(state, self.resize)
@@ -140,6 +150,18 @@ class AtariGameEnv(PreprocessEnv):
 
     def step_type(self, action) -> (np.ndarray, float, bool, dict):
         state, reward, done, info = self.env.step(action * self.action_max)
+        self.was_real_done = done
+        # check current lives, make loss of life terminal,
+        # then update lives to handle bonus lives
+        lives = self.env.unwrapped.ale.lives()
+
+        if lives < self.lives and lives > 0:
+            # for Qbert sometimes we stay in lives == 0 condition for a few frames
+            # so it's important to keep lives > 0, so that we only reset once
+            # the environment advertises done.
+            done = True
+        self.lives = lives
+
         if self.is_image:
             if self.is_gray:
                 state = process_frame(state, self.resize)
