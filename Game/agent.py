@@ -905,6 +905,7 @@ class AgentPPO(AgentBase):
 
 
 class AgentInterPPO(AgentPPO):
+    # 晚上修改一下
     def __init__(self):
         super().__init__()
         self.clip = 0.25  # ratio.clamp(1 - clip, 1 + clip)

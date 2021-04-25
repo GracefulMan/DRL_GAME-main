@@ -171,7 +171,7 @@ def demo2_continuous_action_space_on_policy():
     # args.env = PreprocessEnv(env=env)
     # args.reward_scale = 2 ** -3  # RewardRange: -1800 < -200 < -50 < 0
     "TotalStep: 4e5, TargetReward: -200, UsedTime: 400s"
-    args.env = AtariGameEnv(env=gym.make('SpaceInvaders-v0'), episode_life=True)
+    args.env = AtariGameEnv(env=gym.make('MsPacman-v0'), episode_life=True)
     # args.env = PreprocessEnv(env=gym.make('CartPole-v0'), is_image=False)
     args.agent.if_discrete = args.env.if_discrete
     # args.reward_scale = 2 ** 0  # RewardRange: -800 < -200 < 200 < 302
@@ -182,7 +182,7 @@ def demo2_continuous_action_space_on_policy():
     "TotalStep: 8e5, TargetReward: 300, UsedTime: 1800s "
     '''train and evaluate'''
     # train_and_evaluate(args)
-    args.rollout_num = 2
+    args.rollout_num = 3
     train_and_evaluate_mp(args)
 
 

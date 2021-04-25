@@ -76,9 +76,8 @@ def image_test():
     cv2.imshow('', obs1)
 
 
-
 if __name__ == '__main__':
     # numpy_test()
     # env_test()
     #image_test()
-    env_test3()
+    # env_test3()

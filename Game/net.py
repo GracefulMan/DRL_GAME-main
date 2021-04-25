@@ -547,6 +547,7 @@ class InterPPO(nn.Module):  # Pixel-level state version
         self.sqrt_2pi_log = np.log(np.sqrt(2 * np.pi))
 
     def forward(self, s):
+        # 返回动作值
         s_ = self.enc_s(s)
         a_avg = self.dec_a(s_)
         return a_avg.tanh()
