@@ -915,7 +915,6 @@ class AgentInterPPO(AgentPPO):
     def init(self, net_dim, state_dim, action_dim):
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.act = InterPPO(state_dim, action_dim, net_dim).to(self.device)
-        self.cri = CriticAdv(state_dim, net_dim).to(self.device)
         self.action_dim = action_dim
 
         self.criterion = torch.nn.SmoothL1Loss()
@@ -936,7 +935,7 @@ class AgentInterPPO(AgentPPO):
             buf_reward, buf_mask, buf_action, buf_noise, buf_state = buffer.sample_all()
 
             bs = 2 ** 10  # set a smaller 'bs: batch size' when out of GPU memory.
-            buf_value = torch.cat([self.cri(buf_state[i:i + bs]) for i in range(0, buf_state.size(0), bs)], dim=0)
+            buf_value = torch.cat([self.act(buf_state[i:i + bs]) for i in range(0, buf_state.size(0), bs)], dim=0)
             buf_logprob = -(buf_noise.pow(2).__mul__(0.5) + self.act.a_std_log + self.act.sqrt_2pi_log).sum(1)
 
             buf_r_sum = torch.empty(buf_len, dtype=torch.float32, device=self.device)  # old policy value
