@@ -732,9 +732,9 @@ class AgentInterSAC(AgentSAC):  # Integrated Soft Actor-Critic
 class AgentPPO(AgentBase):
     def __init__(self):
         super().__init__()
-        self.ratio_clip = 0.3  # could be 0.2 ~ 0.5, ratio.clamp(1 - clip, 1 + clip),
+        self.ratio_clip = 0.2  # could be 0.2 ~ 0.5, ratio.clamp(1 - clip, 1 + clip),
         self.lambda_entropy = 0.01  # could be 0.01 ~ 0.05
-        self.lambda_gae_adv = 0.98  # could be 0.95 ~ 0.99, GAE (Generalized Advantage Estimation. ICLR.2016.)
+        self.lambda_gae_adv = 0.95  # could be 0.95 ~ 0.99, GAE (Generalized Advantage Estimation. ICLR.2016.)
         self.if_use_gae = False  # if use Generalized Advantage Estimation
         self.if_on_policy = True  # AgentPPO is an on policy DRL algorithm
         self.noise = None

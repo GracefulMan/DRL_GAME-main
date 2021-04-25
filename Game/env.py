@@ -415,13 +415,14 @@ def get_video_to_watch_gym_render():
 
     '''choose env'''
     # from elegantrl.env import PreprocessEnv
-    env = PreprocessEnv(env=gym.make('CarRacing-v0'))
+    from atari_env import AtariGameEnv
+    env = AtariGameEnv(env=gym.make('MsPacman-v0'))
     #env = gym.make('CarRacing-v0')
     '''choose algorithm'''
-    from agent import AgentModSAC
-    agent = AgentModSAC()
-    net_dim = 2 ** 7
-    cwd = 'AgentModSAC/AntBulletEnv-v0_0/'
+    from agent import AgentPPO
+    agent = AgentPPO()
+    net_dim = 2 ** 6
+    cwd = 'Game/AgentPPO/MsPacman-v0_0/'
     # from elegantrl.agent import AgentModSAC
     # agent = AgentModSAC()
     # net_dim = 2 ** 7
@@ -451,7 +452,8 @@ def get_video_to_watch_gym_render():
         s_tensor = torch.as_tensor((state,), dtype=torch.float32, device=device)
         a_tensor = agent.act(s_tensor)
         action = a_tensor.detach().cpu().numpy()[0]  # if use 'with torch.no_grad()', then '.detach()' not need.
-        action = env.action_space.sample()
+        #action = env.action_space.sample()
+        action =action.argmax(axis=0)
         next_state, reward, done, _ = env.step(action)
 
         if done:
@@ -472,4 +474,4 @@ if __name__ == '__main__':
     os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 
     get_video_to_watch_gym_render()
-    render__car_racing()
+    #render__car_racing()

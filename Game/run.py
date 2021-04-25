@@ -133,8 +133,8 @@ def demo2_continuous_action_space_off_policy():
     env = gym.make('Breakout-v1')
     env.target_reward = -200  # set target_reward manually for env 'Pendulum-v0'
     args.env = PreprocessEnv(env=env)
-    print(args.env.observation_space.shape)
-    args.reward_scale = 2 ** -3  # RewardRange: -1800 < -200 < -50 < 0
+
+    #args.reward_scale = 2 ** -3  # RewardRange: -1800 < -200 < -50 < 0
     # args.eval_times2 = 2 ** 4  # set a large eval_times to get a precise learning curve
     "TD3    TotalStep: 3e4, TargetReward: -200, UsedTime: 300s"
     "ModSAC TotalStep: 4e4, TargetReward: -200, UsedTime: 400s"
@@ -171,14 +171,15 @@ def demo2_continuous_action_space_on_policy():
     # args.env = PreprocessEnv(env=env)
     # args.reward_scale = 2 ** -3  # RewardRange: -1800 < -200 < -50 < 0
     "TotalStep: 4e5, TargetReward: -200, UsedTime: 400s"
-    args.env = AtariGameEnv(env=gym.make('MsPacman-v0'), episode_life=True)
-    # args.env = PreprocessEnv(env=gym.make('CartPole-v0'), is_image=False)
+    #args.env = AtariGameEnv(env=gym.make('Acrobot-v1'), episode_life=True)
+    args.env = PreprocessEnv(env=gym.make('Acrobot-v1'), is_image=False)
     args.agent.if_discrete = args.env.if_discrete
     # args.reward_scale = 2 ** 0  # RewardRange: -800 < -200 < 200 < 302
     "TotalStep: 8e5, TargetReward: 200, UsedTime: 1500s"
     # args.env = PreprocessEnv(env=gym.make('BipedalWalker-v3'))
     # args.reward_scale = 2 ** 0  # RewardRange: -200 < -150 < 300 < 334
     # args.gamma = 0.96
+    args.gamma = 0.99
     "TotalStep: 8e5, TargetReward: 300, UsedTime: 1800s "
     '''train and evaluate'''
     # train_and_evaluate(args)

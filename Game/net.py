@@ -14,10 +14,10 @@ class ImageConv(nn.Module):
 
     def __init__(self, image_shape: list) -> None:
         '''
-        image_shape:(w, h, channels), such as: (200, 240, 3).
+        image_shape:(channels, w, h), such as: (3, 200, 240).
         '''
         super(ImageConv, self).__init__()
-        w, h, channels = image_shape
+        channels,w, h = image_shape
         filters = 32
         self.net = nn.Sequential(
             nn.Conv2d(channels, filters, 3, stride=2, padding=1), nn.ReLU(),
@@ -41,11 +41,22 @@ class ImageConv(nn.Module):
 class QNet(nn.Module):  # nn.Module is a standard PyTorch Network
     def __init__(self, mid_dim, state_dim, action_dim):
         super(QNet, self).__init__()
-        self.net = nn.Sequential(nn.Linear(state_dim, mid_dim), nn.ReLU(),
-                                 nn.Linear(mid_dim, mid_dim), nn.ReLU(),
-                                 nn.Linear(mid_dim, mid_dim), nn.ReLU(),
-                                 nn.Linear(mid_dim, action_dim))
-
+        if len(state_dim)==1:
+            self.net = nn.Sequential(nn.Linear(state_dim, mid_dim), nn.ReLU(),
+                                     nn.Linear(mid_dim, mid_dim), nn.ReLU(),
+                                     nn.Linear(mid_dim, mid_dim), nn.ReLU(),
+                                     nn.Linear(mid_dim, action_dim))
+        else:
+            conv = ImageConv(state_dim)
+            tmp_dim = self.conv.out_dim
+            fc = nn.Sequential(
+                nn.Linear(tmp_dim, mid_dim),nn.ReLU(),
+                nn.Linear(mid_dim, action_dim)
+            )
+            self.net = nn.Sequential(
+                conv,
+                fc
+            )
     def forward(self, state):
         return self.net(state)  # Q value
 
@@ -53,8 +64,21 @@ class QNet(nn.Module):  # nn.Module is a standard PyTorch Network
 class QNetDuel(nn.Module):  # Dueling DQN
     def __init__(self, mid_dim, state_dim, action_dim):
         super(QNetDuel, self).__init__()
-        self.net_state = nn.Sequential(nn.Linear(state_dim, mid_dim), nn.ReLU(),
-                                       nn.Linear(mid_dim, mid_dim), nn.ReLU())
+        if len(state_dim)==1:
+            self.net_state = nn.Sequential(nn.Linear(state_dim, mid_dim), nn.ReLU(),
+                                           nn.Linear(mid_dim, mid_dim), nn.ReLU())
+        else:
+            conv = ImageConv(state_dim)
+            tmp_dim = self.conv.out_dim
+            fc = nn.Sequential(
+                nn.Linear(tmp_dim, mid_dim), nn.ReLU(),
+                nn.Linear(mid_dim, mid_dim), nn.ReLU()
+            )
+            self.net_state = nn.Sequential(
+                conv,
+                fc
+            )
+
         self.net_val = nn.Sequential(nn.Linear(mid_dim, mid_dim), nn.ReLU(),
                                      nn.Linear(mid_dim, 1))  # Q value
         self.net_adv = nn.Sequential(nn.Linear(mid_dim, mid_dim), nn.ReLU(),
@@ -70,8 +94,20 @@ class QNetDuel(nn.Module):  # Dueling DQN
 class QNetTwin(nn.Module):  # Double DQN
     def __init__(self, mid_dim, state_dim, action_dim):
         super(QNetTwin, self).__init__()
-        self.net_state = nn.Sequential(nn.Linear(state_dim, mid_dim), nn.ReLU(),
-                                       nn.Linear(mid_dim, mid_dim), nn.ReLU())  # state
+        if len(state_dim) == 1:
+            self.net_state = nn.Sequential(nn.Linear(state_dim, mid_dim), nn.ReLU(),
+                                           nn.Linear(mid_dim, mid_dim), nn.ReLU())
+        else:
+            conv = ImageConv(state_dim)
+            tmp_dim = self.conv.out_dim
+            fc = nn.Sequential(
+                nn.Linear(tmp_dim, mid_dim), nn.ReLU(),
+                nn.Linear(mid_dim, mid_dim), nn.ReLU()
+            )
+            self.net_state = nn.Sequential(
+                conv,
+                fc
+            )
         self.net_q1 = nn.Sequential(nn.Linear(mid_dim, mid_dim), nn.ReLU(),
                                     nn.Linear(mid_dim, action_dim))  # q1 value
         self.net_q2 = nn.Sequential(nn.Linear(mid_dim, mid_dim), nn.ReLU(),
@@ -91,8 +127,20 @@ class QNetTwin(nn.Module):  # Double DQN
 class QNetTwinDuel(nn.Module):  # D3QN: Dueling Double DQN
     def __init__(self, mid_dim, state_dim, action_dim):
         super(QNetTwinDuel, self).__init__()
-        self.net_state = nn.Sequential(nn.Linear(state_dim, mid_dim), nn.ReLU(),
-                                       nn.Linear(mid_dim, mid_dim), nn.ReLU())
+        if len(state_dim) == 1:
+            self.net_state = nn.Sequential(nn.Linear(state_dim, mid_dim), nn.ReLU(),
+                                           nn.Linear(mid_dim, mid_dim), nn.ReLU())
+        else:
+            conv = ImageConv(state_dim)
+            tmp_dim = self.conv.out_dim
+            fc = nn.Sequential(
+                nn.Linear(tmp_dim, mid_dim), nn.ReLU(),
+                nn.Linear(mid_dim, mid_dim), nn.ReLU()
+            )
+            self.net_state = nn.Sequential(
+                conv,
+                fc
+            )
         self.net_val1 = nn.Sequential(nn.Linear(mid_dim, mid_dim), nn.ReLU(),
                                       nn.Linear(mid_dim, 1))  # q1 value
         self.net_val2 = nn.Sequential(nn.Linear(mid_dim, mid_dim), nn.ReLU(),
@@ -127,10 +175,22 @@ class QNetTwinDuel(nn.Module):  # D3QN: Dueling Double DQN
 class Actor(nn.Module):  # DPG: Deterministic Policy Gradient
     def __init__(self, mid_dim, state_dim, action_dim):
         super(Actor, self).__init__()
-        self.net = nn.Sequential(nn.Linear(state_dim, mid_dim), nn.ReLU(),
-                                 nn.Linear(mid_dim, mid_dim), nn.ReLU(),
-                                 nn.Linear(mid_dim, mid_dim), nn.ReLU(),
-                                 nn.Linear(mid_dim, action_dim))
+        if len(state_dim) == 1:
+            self.net = nn.Sequential(nn.Linear(state_dim, mid_dim), nn.ReLU(),
+                                     nn.Linear(mid_dim, mid_dim), nn.ReLU(),
+                                     nn.Linear(mid_dim, mid_dim), nn.ReLU(),
+                                     nn.Linear(mid_dim, action_dim))
+        else:
+            conv = ImageConv(state_dim)
+            tmp_dim = self.conv.out_dim
+            fc = nn.Sequential(
+                nn.Linear(tmp_dim, mid_dim), nn.ReLU(),
+                nn.Linear(mid_dim, action_dim)
+            )
+            self.net = nn.Sequential(
+                conv,
+                fc
+            )
 
     def forward(self, state):
         return self.net(state).tanh()  # action.tanh()
@@ -212,6 +272,7 @@ class ActorSAC(nn.Module):
             self.net_state = nn.Sequential(nn.Linear(state_dim, mid_dim), nn.ReLU(),
                                            nn.Linear(mid_dim, mid_dim), nn.Hardswish(),
                                            nn.Linear(mid_dim, lay_dim), nn.Hardswish())
+
         self.net_a_avg = nn.Linear(lay_dim, action_dim)  # the average of action
         self.net_a_std = nn.Linear(lay_dim, action_dim)  # the log_std of action
 
@@ -273,9 +334,21 @@ class ActorSAC(nn.Module):
 class Critic(nn.Module):
     def __init__(self, mid_dim, state_dim, action_dim):
         super(Critic, self).__init__()
-        self.net = nn.Sequential(nn.Linear(state_dim + action_dim, mid_dim), nn.ReLU(),
-                                 nn.Linear(mid_dim, mid_dim), nn.ReLU(),
-                                 nn.Linear(mid_dim, 1))
+        if len(state_dim)==1:
+            self.net = nn.Sequential(nn.Linear(state_dim + action_dim, mid_dim), nn.ReLU(),
+                                     nn.Linear(mid_dim, mid_dim), nn.ReLU(),
+                                     nn.Linear(mid_dim, 1))
+        else:
+            conv = ImageConv(state_dim)
+            tmp_dim = self.conv.out_dim
+            fc = nn.Sequential(
+                nn.Linear(tmp_dim, mid_dim), nn.ReLU(),
+                nn.Linear(mid_dim, 1)
+            )
+            self.net = nn.Sequential(
+                conv,
+                fc
+            )
 
     def forward(self, state, action):
         return self.net(torch.cat((state, action), dim=1))  # Q value
