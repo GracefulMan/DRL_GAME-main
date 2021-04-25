@@ -37,10 +37,10 @@ class Arguments:
         self.batch_size = 2 ** 6  # num of transitions sampled from replay buffer.
         self.repeat_times = 2 ** 0  # repeatedly update network to keep critic's loss small
         self.target_step = 2 ** 10  # collect target_step, then update network
-        self.max_memo = 2 ** 8  # capacity of replay buffer
+        self.max_memo = 2 ** 10  # capacity of replay buffer
         if if_on_policy:  # (on-policy)
             self.net_dim = 2 ** 6
-            self.batch_size = 2 ** 5
+            self.batch_size = 2 ** 6
             self.repeat_times = 2 ** 4
             self.target_step = 2 ** 12
             self.max_memo = self.target_step
@@ -55,7 +55,7 @@ class Arguments:
         self.break_step = 2 ** 21  # break training after 'total_step > break_step'
         self.eval_times1 = 2 ** 2  # evaluation times
         self.eval_times2 = 2 ** 4  # evaluation times if 'eval_reward > max_reward'
-        self.show_gap = 2 ** 8  # show the Reward and Loss value per show_gap seconds
+        self.show_gap = 2 ** 7  # show the Reward and Loss value per show_gap seconds
         self.random_seed = 0  # initialize random seed in self.init_before_training()
 
     def init_before_training(self, if_main=True):
