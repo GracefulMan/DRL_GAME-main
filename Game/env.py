@@ -179,6 +179,11 @@ class AtariGameEnv(PreprocessEnv):
 
 
 
+
+
+
+
+
 def process_frame(frame, resize):
     frame = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)
     if resize is not None:

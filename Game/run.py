@@ -7,7 +7,8 @@ import numpy.random as rd
 import torch
 
 from agent import ReplayBuffer, ReplayBufferMP
-from env import PreprocessEnv, AtariGameEnv
+from env import PreprocessEnv
+from atari_env import AtariGameEnv
 
 gym.logger.set_level(40)  # Block warning: 'WARN: Box bound precision lowered by casting to float32'
 # mac
@@ -182,7 +183,7 @@ def demo2_continuous_action_space_on_policy():
 
     '''train and evaluate'''
     # train_and_evaluate(args)
-    args.rollout_num = 1
+    args.rollout_num = 2
     train_and_evaluate_mp(args)
 
 
