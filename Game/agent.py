@@ -914,8 +914,8 @@ class AgentInterPPO(AgentPPO):
 
     def init(self, net_dim, state_dim, action_dim):
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
         self.act = InterPPO(state_dim, action_dim, net_dim).to(self.device)
+        self.action_dim = action_dim
 
         self.criterion = torch.nn.SmoothL1Loss()
         self.optimizer = torch.optim.Adam([

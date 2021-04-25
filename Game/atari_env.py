@@ -269,6 +269,7 @@ class AtariGameEnv(gym.Wrapper):
          ) = get_gym_env_info(self.env, if_print)
 
 
+
 def get_gym_env_info(env, if_print) -> (str, int, int, int, int, bool, float):
             gym.logger.set_level(40)  # Block warning: 'WARN: Box bound precision lowered by casting to float32'
             assert isinstance(env, gym.Env)
