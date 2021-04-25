@@ -46,15 +46,14 @@ def env_test2():
 
 def env_test3():
     from atari_env import AtariGameEnv
-    env = gym.make('Breakout-v0')
-    env = AtariGameEnv(env)
+    env = gym.make('CarRacing-v0')
+    env = AtariGameEnv(env, episode_life=False)
     epochs = 1000
     env.reset()
     for _ in range(epochs):
         env.render()
         action = env.action_space.sample()
         s_, reward, done, _ = env.step(action)
-        print(np.array(s_).shape)
         if reward!=0: print(reward)
         time.sleep(0.01)
 

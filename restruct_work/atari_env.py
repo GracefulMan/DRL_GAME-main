@@ -244,8 +244,7 @@ def wrap_deepmind(env, episode_life=True, clip_rewards=True, frame_stack=False, 
     """
     if episode_life:
         env = EpisodicLifeEnv(env)
-
-    if hasattr(env.unwrapped, 'get_action_meanings') and 'FIRE' in env.unwrapped.get_action_meanings():
+    if 'FIRE' in env.unwrapped.get_action_meanings():
         env = FireResetEnv(env)
     env = WarpFrame(env)
     if scale:
@@ -262,8 +261,7 @@ def wrap_deepmind(env, episode_life=True, clip_rewards=True, frame_stack=False, 
 
 class AtariGameEnv(gym.Wrapper):
     def __init__(self, env, if_print=True,episode_life=True, clip_rewards=True, frame_stack=True, scale=True):
-        env = wrap_deepmind(env, episode_life, clip_rewards, frame_stack, scale)
-        self.env = env
+        self.env = wrap_deepmind(env, episode_life, clip_rewards, frame_stack, scale)
         super(AtariGameEnv, self).__init__(self.env)
         (self.env_name, self.state_dim, self.action_dim, self.action_max, self.max_step,
          self.if_discrete, self.target_reward

@@ -161,8 +161,8 @@ def demo2_continuous_action_space_on_policy():
     args = Arguments(if_on_policy=True)  # hyper-parameters of on-policy is different from off-policy
 
     '''choose an DRL algorithm'''
-    from agent import AgentPPO
-    args.agent = AgentPPO()
+    from agent import AgentPPO, AgentInterPPO
+    args.agent = AgentInterPPO()
     args.agent.if_use_gae = True
 
     '''choose environment'''
@@ -171,7 +171,7 @@ def demo2_continuous_action_space_on_policy():
     # args.env = PreprocessEnv(env=env)
     # args.reward_scale = 2 ** -3  # RewardRange: -1800 < -200 < -50 < 0
     "TotalStep: 4e5, TargetReward: -200, UsedTime: 400s"
-    args.env = AtariGameEnv(env=gym.make('Breakout-v0'))
+    args.env = AtariGameEnv(env=gym.make('CarRacing-v0'))
     # args.env = PreprocessEnv(env=gym.make('CartPole-v0'), is_image=False)
     args.agent.if_discrete = args.env.if_discrete
     # args.reward_scale = 2 ** 0  # RewardRange: -800 < -200 < 200 < 302
@@ -180,7 +180,6 @@ def demo2_continuous_action_space_on_policy():
     # args.reward_scale = 2 ** 0  # RewardRange: -200 < -150 < 300 < 334
     # args.gamma = 0.96
     "TotalStep: 8e5, TargetReward: 300, UsedTime: 1800s "
-
     '''train and evaluate'''
     # train_and_evaluate(args)
     args.rollout_num = 2
